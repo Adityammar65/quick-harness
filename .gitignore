@@ -1,6 +1,5 @@
 AGENT.md
 PLAN.md
-.dockerignore
 .freebuff
 .venv/
 __pycache__/

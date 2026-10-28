@@ -6,8 +6,9 @@ The generator never calls an AI API and never configures a specific agent for yo
 
 ## Requirements
 
+- Windows, macOS, or Linux
 - Python 3.10 or newer
-- Git, for installing skills from a repository (local directories do not need Git)
+- Git, only when installing skills from a Git repository; local skill directories do not need Git
 
 ## Installation
 
@@ -19,7 +20,7 @@ uv tool install --editable .
 
 An editable tool install keeps the global command in sync with this checkout, so source changes apply immediately. Use `uv tool install .` instead for a fixed copy of the current code.
 
-`~/.local/bin` must be on your `PATH` (`uv tool update-shell` adds it). Remove the command with:
+Run `uv tool update-shell` if `harness` is not found after installation. This configures the tool directory for your current platform. Remove the command with:
 
 ```bash
 uv tool uninstall quick-harness
@@ -29,6 +30,26 @@ Without `uv`, a user-level install works from a Python with `pip`:
 
 ```bash
 pip install --user .
+```
+
+On Windows, run the same command in PowerShell or Command Prompt. If `harness` is not found afterward, add Python's user scripts directory to `PATH` or use `uv tool install`.
+
+To install from the checked-out source with Python instead of `uv`, run:
+
+```bash
+python -m pip install .
+```
+
+After installation, start the interactive project setup with:
+
+```bash
+harness init
+```
+
+To see all available commands:
+
+```bash
+harness --help
 ```
 
 ## Usage
@@ -144,23 +165,27 @@ Existing `.gitignore` content is always preserved, duplicate entries are not add
 
 ## Development
 
-The global tool install excludes test dependencies, so create a project environment for development:
+The global tool install excludes test dependencies. Create a project environment and install the development dependencies:
 
 ```bash
-uv venv .venv
-uv pip install --python .venv/bin/python -e ".[dev]"
-.venv/bin/python -m pytest
+python -m venv .venv
+```
+
+Activate it with the command for your shell:
+
+```bash
+source .venv/bin/activate
+```
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Then install and run the suite using the environment's Python:
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
 ```
 
 The suite covers configuration validation, deterministic rendering, generation and overwrite protection, `.gitignore` handling, skill validation and installation, and the CLI commands. Skills tests use local temporary directories, so they never touch the network.
-
-### Docker
-
-The repository ships a `Dockerfile` and `compose.yaml` for containerized use:
-
-```bash
-docker compose build
-docker compose run --rm harness
-```
-
-Inside the container the project is mounted at `/workspace` and the `harness` command is installed. Docker lifecycle operations are left to the developer.

@@ -206,6 +206,8 @@ def _clone_repository(source: str, target: Path, ref: str | None) -> None:
             command,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=CLONE_TIMEOUT_SECONDS,
             check=False,
         )
@@ -315,4 +317,4 @@ def _copy_skill_tree(source: Path, destination: Path) -> None:
             source_file = current_path / file_name
             if source_file.is_symlink() or not source_file.is_file():
                 continue
-            shutil.copy2(source_file, target_directory / file_name)
+            shutil.copyfile(source_file, target_directory / file_name)

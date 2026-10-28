@@ -125,6 +125,16 @@ def test_unsupported_source_scheme_is_rejected(tmp_path):
         skills.install_skill("ftp://example.com/skill", tmp_path / "skills")
 
 
+def test_missing_git_has_an_actionable_error(tmp_path, monkeypatch):
+    def unavailable_git(*args, **kwargs):
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(skills.subprocess, "run", unavailable_git)
+
+    with pytest.raises(skills.SkillSourceError, match="Git is required"):
+        skills.install_skill("https://example.com/skill.git", tmp_path / "skills")
+
+
 def test_unsafe_subdirectory_is_rejected(tmp_path, skill_source):
     with pytest.raises(ConfigurationError):
         skills.install_skill(str(skill_source), tmp_path / "skills", subdirectory="../..")
