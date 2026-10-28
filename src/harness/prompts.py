@@ -5,7 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import questionary
-from questionary import Choice
+from questionary import Choice, Style
 from rich.console import Console
 
 from harness import generator, skills, templates
@@ -23,6 +23,23 @@ from harness.config import (
 )
 
 DOCUMENTATION_FOLDER_SUGGESTIONS = ("screenshots", "guides", "assets", "api")
+SELECT_POINTER = "●"
+CHECKBOX_POINTER = "❯"
+
+PROMPT_STYLE = Style(
+    [
+        ("qmark", "fg:#00afff bold"),
+        ("question", "bold"),
+        ("pointer", "fg:#00afff bold"),
+        ("highlighted", "noinherit"),
+        ("selected", "noinherit"),
+        ("answer", "fg:#00afff bold"),
+        ("separator", "fg:#6c6c6c"),
+        ("instruction", "fg:#6c6c6c"),
+        ("text", ""),
+        ("disabled", "fg:#6c6c6c italic"),
+    ]
+)
 
 console = Console()
 
@@ -34,11 +51,21 @@ class PromptCancelled(RuntimeError):
 
 
 def ask_text(message: str, default: str = "", validate: Validator | None = None) -> str:
-    return _answer(questionary.text(message, default=default, validate=validate))
+    return _answer(
+        questionary.text(message, default=default, validate=validate, style=PROMPT_STYLE)
+    )
 
 
 def ask_select(message: str, choices: list[Choice], default: object | None = None):
-    return _answer(questionary.select(message, choices=choices, default=default))
+    return _answer(
+        questionary.select(
+            message,
+            choices=choices,
+            default=default,
+            pointer=SELECT_POINTER,
+            style=PROMPT_STYLE,
+        )
+    )
 
 
 def ask_checkbox(
@@ -48,11 +75,18 @@ def ask_checkbox(
         Choice(choice.title, value=choice.value, checked=choice.value in defaults)
         for choice in choices
     ]
-    return _answer(questionary.checkbox(message, choices=prepared))
+    return _answer(
+        questionary.checkbox(
+            message,
+            choices=prepared,
+            pointer=CHECKBOX_POINTER,
+            style=PROMPT_STYLE,
+        )
+    )
 
 
 def ask_confirm(message: str, default: bool = True) -> bool:
-    return bool(_answer(questionary.confirm(message, default=default)))
+    return bool(_answer(questionary.confirm(message, default=default, style=PROMPT_STYLE)))
 
 
 def parse_rule_lines(text: str) -> tuple[str, ...]:
