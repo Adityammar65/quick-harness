@@ -1,0 +1,47 @@
+[
+  {
+    "name": "test-driven-development",
+    "description": "Write the failing test first, then the smallest implementation that makes it pass.",
+    "repo_url": "https://github.com/obra/superpowers",
+    "subdirectory": "skills/test-driven-development",
+    "ref": "main",
+    "license": "MIT",
+    "license_verified": true
+  },
+  {
+    "name": "systematic-debugging",
+    "description": "Diagnose defects by reproducing, isolating, and fixing the root cause instead of the symptom.",
+    "repo_url": "https://github.com/obra/superpowers",
+    "subdirectory": "skills/systematic-debugging",
+    "ref": "main",
+    "license": "MIT",
+    "license_verified": true
+  },
+  {
+    "name": "verification-before-completion",
+    "description": "Verify a change with real evidence before claiming that work is complete.",
+    "repo_url": "https://github.com/obra/superpowers",
+    "subdirectory": "skills/verification-before-completion",
+    "ref": "main",
+    "license": "MIT",
+    "license_verified": true
+  },
+  {
+    "name": "mcp-builder",
+    "description": "Guide for building Model Context Protocol servers in Python or TypeScript.",
+    "repo_url": "https://github.com/anthropics/skills",
+    "subdirectory": "skills/mcp-builder",
+    "ref": "main",
+    "license": "See LICENSE.txt in the skill directory",
+    "license_verified": false
+  },
+  {
+    "name": "docx",
+    "description": "Create, read, and edit Microsoft Word documents and templates.",
+    "repo_url": "https://github.com/anthropics/skills",
+    "subdirectory": "skills/docx",
+    "ref": "main",
+    "license": "Proprietary; see LICENSE.txt in the skill directory",
+    "license_verified": false
+  }
+]

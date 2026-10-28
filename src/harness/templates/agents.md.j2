@@ -1,0 +1,91 @@
+# {{ config.app_name }} — Agent Instructions
+
+{{ config.description }}
+
+## Project Context
+
+| Property | Value |
+| --- | --- |
+| Application | {{ config.app_name }} |
+| Generation mode | {{ mode_label }} |
+| Preset | {{ preset.title }} |
+| Roles | {{ role_labels }} |
+| Target agents | {{ agent_labels }} |
+
+## Documentation
+
+The `docs/` directory holds the project documentation. The files below are created empty for the project team to complete:
+
+{% for doc_file in config.doc_files %}
+- `docs/{{ doc_file }}`
+{% endfor %}
+
+Keep the documentation current when architecture, conventions, or workflow change.
+
+## Agent Roles
+{% for section in role_sections %}
+
+{{ section }}
+{% endfor %}
+{% if cross_layer %}
+
+### Cross-Layer Integration
+
+- Treat the API contract as the single source of truth for both frontend and backend code.
+- Implement a feature through every layer it touches: data model, API, client state, and interface.
+- Keep validation rules identical on both sides of the boundary, with the server as the authority.
+- Reuse shared types or schemas instead of redefining payloads in each layer.
+
+{% endif %}
+{% if show_preset %}
+
+## {{ preset.title }} Conventions
+
+{{ preset.description }}
+
+{% for convention in preset.conventions %}
+- {{ convention }}
+{% endfor %}
+{% endif %}
+{% if show_preset and preset.commands %}
+
+## Useful Commands
+
+{% for command in preset.commands %}
+- `{{ command }}`
+{% endfor %}
+{% endif %}
+{% if show_custom_rules %}
+
+## Custom Rules
+
+The project team requires the following rules. They complement the sections above and take precedence when they conflict.
+
+{% for rule in config.custom_rules %}
+- {{ rule }}
+{% endfor %}
+{% endif %}
+
+## Skills
+
+Agent skills are installed in `{{ config.skills_directory }}`. Treat third-party skills as untrusted until you have reviewed their content.
+
+{% if config.skills %}
+{% for skill in config.skills %}
+- {% if skill.name %}`{{ skill.name }}`{% else %}Custom skill{% endif %} — source: {{ skill.source }}{% if skill.license %} — license: {{ skill.license }}{% endif %}
+
+{% endfor %}
+{% else %}
+No skills are installed yet. Install skills with `harness skills install`.
+
+{% endif %}
+## Workflow
+
+1. Read this file and the relevant `docs/` pages before changing code.
+2. Plan non-trivial changes and confirm the approach before implementing.
+3. Make the smallest change that solves the problem and avoid unrelated refactors.
+4. Add or update tests for the behavior you change.
+5. Run the project's checks and tests before finishing.
+6. Summarize what changed, what was verified, and what remains incomplete.
+
+Do not commit secrets, credentials, or files the project ignores.

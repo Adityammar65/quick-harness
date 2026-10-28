@@ -1,0 +1,13 @@
+{
+  "name": "general",
+  "title": "General Application",
+  "description": "Framework-agnostic conventions for a typical application.",
+  "conventions": [
+    "Prefer the standard library or an existing dependency before adding a new package.",
+    "Keep configuration in environment variables and document every required value.",
+    "Write tests alongside the behavior they cover.",
+    "Keep public interfaces small and documented.",
+    "Remove dead code instead of leaving it commented out."
+  ],
+  "commands": []
+}

@@ -1,0 +1,18 @@
+{
+  "name": "react",
+  "title": "React",
+  "description": "Conventions for React applications.",
+  "conventions": [
+    "Use function components and hooks, and keep each component focused on one responsibility.",
+    "Prefer derived state over synchronized state and avoid duplicating server data in local state.",
+    "Type props and API payloads and avoid any.",
+    "Use semantic HTML and accessible labels for every interactive element.",
+    "Colocate tests with the component or feature they cover.",
+    "Keep data fetching in a dedicated layer and handle loading, empty, and error states."
+  ],
+  "commands": [
+    "npm run lint",
+    "npm run test",
+    "npm run build"
+  ]
+}

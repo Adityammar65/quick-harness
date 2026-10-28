@@ -1,0 +1,18 @@
+{
+  "name": "laravel",
+  "title": "Laravel",
+  "description": "Conventions for Laravel applications.",
+  "conventions": [
+    "Keep controllers thin and move business logic into services, actions, or domain classes.",
+    "Validate request input with form requests and authorize actions with policies or gates.",
+    "Use Eloquent relationships and query scopes instead of raw SQL unless a raw query is justified.",
+    "Write reversible migrations and never edit a migration that has already run in production.",
+    "Queue slow work and make jobs idempotent.",
+    "Format with Laravel Pint and keep configuration in config files plus environment variables."
+  ],
+  "commands": [
+    "php artisan test",
+    "php artisan migrate",
+    "./vendor/bin/pint --test"
+  ]
+}

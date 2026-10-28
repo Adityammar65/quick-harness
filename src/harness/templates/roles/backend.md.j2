@@ -1,0 +1,9 @@
+### Backend
+
+- Keep business rules out of transport handlers and controllers.
+- Model data explicitly and ship reversible migrations for schema changes.
+- Define request and response contracts and validate every input at the boundary.
+- Enforce authentication and authorization on the server for every protected operation.
+- Never log secrets or personal data, and return generic error messages to clients.
+- Add indexes for query patterns you introduce and avoid unbounded result sets.
+- Make background jobs idempotent and safe to retry.
