@@ -112,12 +112,79 @@ def test_init_applies_gitignore_choice(tmp_path: Path):
         "--agent",
         "opencode",
         "--gitignore",
-        "yes",
+        "default",
     )
     assert result.exit_code == 0, result.output
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert "AGENTS.md" in content
     assert ".opencode/skills/" in content
+
+
+def test_init_creates_requested_documentation_folders(tmp_path: Path):
+    result = invoke(
+        "init",
+        str(tmp_path),
+        "--yes",
+        "--name",
+        "Demo",
+        "--description",
+        "A demo application.",
+        "--docs-folder",
+        "screenshots",
+        "--docs-folder",
+        "guides/api",
+    )
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "docs" / "screenshots" / ".gitkeep").is_file()
+    assert (tmp_path / "docs" / "guides" / "api" / ".gitkeep").is_file()
+    content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "`docs/screenshots/`" in content
+    assert "`docs/guides/api/`" in content
+
+
+def test_init_custom_gitignore_accepts_arbitrary_entries(tmp_path: Path):
+    result = invoke(
+        "init",
+        str(tmp_path),
+        "--yes",
+        "--name",
+        "Demo",
+        "--description",
+        "A demo application.",
+        "--gitignore",
+        "custom",
+        "--gitignore-path",
+        "AGENTS.md",
+        "--gitignore-path",
+        ".env",
+        "--gitignore-path",
+        "node_modules/",
+    )
+    assert result.exit_code == 0, result.output
+    lines = (tmp_path / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "AGENTS.md" in lines
+    assert ".env" in lines
+    assert "node_modules/" in lines
+    assert "docs/" not in lines
+
+
+def test_init_rejects_project_wide_gitignore_entry(tmp_path: Path):
+    result = invoke(
+        "init",
+        str(tmp_path),
+        "--yes",
+        "--name",
+        "Demo",
+        "--description",
+        "A demo application.",
+        "--gitignore",
+        "custom",
+        "--gitignore-path",
+        "*",
+    )
+    assert result.exit_code == 1
+    assert "Refusing to ignore the entire project" in result.output
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_init_installs_skill_from_local_directory(tmp_path: Path, skill_source: Path):

@@ -1,3 +1,3 @@
-"""AI Agent Harness Generator."""
+"""Quick Harness."""
 
 __version__ = "0.1.0"

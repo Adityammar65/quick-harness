@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ai-agent-harness-generator"
+name = "quick-harness"
 version = "0.1.0"
 description = "Generate an AI coding agent harness: AGENTS.md, documentation scaffolding, and reusable skills."
 readme = "README.md"

@@ -1,4 +1,4 @@
-# AI Agent Harness Generator
+# Quick Harness
 
 A small, deterministic CLI that scaffolds a project-specific AI coding agent harness: an `AGENTS.md` instruction file, empty documentation placeholders, and reusable [Agent Skills](https://agentskills.io) installed from open-source repositories.
 
@@ -22,7 +22,7 @@ An editable tool install keeps the global command in sync with this checkout, so
 `~/.local/bin` must be on your `PATH` (`uv tool update-shell` adds it). Remove the command with:
 
 ```bash
-uv tool uninstall ai-agent-harness-generator
+uv tool uninstall quick-harness
 ```
 
 Without `uv`, a user-level install works from a Python with `pip`:
@@ -42,7 +42,7 @@ harness skills install docx       # install one catalog skill
 harness skills install --url https://github.com/owner/repo --subdirectory skills/name
 ```
 
-`init` collects the application name and description, the generation mode, the project roles, the target agents, optional custom rules, skills, and whether the generated paths should be added to `.gitignore`. It then shows a preview and waits for confirmation before writing anything.
+`init` collects the application name and description, the generation mode, the project roles, the target agents, optional custom rules, additional documentation folders, skills, and how `.gitignore` should be handled. It then shows a preview and waits for confirmation before writing anything.
 
 Non-interactive use is available for scripts and CI:
 
@@ -55,8 +55,10 @@ harness init . --yes \
   --agent claude \
   --preset react \
   --custom-rule "Never commit directly to main." \
+  --docs-folder screenshots \
+  --docs-folder guides \
   --skill test-driven-development \
-  --gitignore no
+  --gitignore default
 ```
 
 With `--yes`, `--name` and `--description` are required and existing files are never overwritten.
@@ -82,13 +84,19 @@ project-root/
 │   ├── project-overview.md
 │   ├── architecture.md
 │   ├── conventions.md
-│   └── workflow.md
+│   ├── workflow.md
+│   └── screenshots/         # optional additional folder
+│       └── .gitkeep
 └── skills/                  # or the skills directory of the selected agent
     └── <skill-name>/
         └── SKILL.md
 ```
 
 Documentation files are intentionally created empty. No agent-specific configuration is generated.
+
+### Documentation folders
+
+`--docs-folder` (repeatable) adds extra folders inside `docs/` for material such as screenshots, guides, assets, or API references. The interactive flow offers `screenshots`, `guides`, `assets`, and `api`, and accepts custom folder names. Each folder receives an empty `.gitkeep` file so it survives in Git; without a tracked file, Git would drop the empty directory.
 
 ### Target agents
 
@@ -114,7 +122,25 @@ Installation validates the target before copying:
 
 ## Git ignore handling
 
-`init` asks whether to add the generated paths to `.gitignore`: `no` (default), `yes` for all generated paths, or `custom` for a selection. Existing content is preserved, duplicate entries are not added, and only the selected paths are written.
+`init` asks how to handle `.gitignore`:
+
+| Mode | Behavior |
+| --- | --- |
+| `no` | Leave `.gitignore` untouched. This is the default, since shared instructions are useful to teammates. |
+| `default` | Add the generated harness paths: `AGENTS.md`, `docs/`, and the skills directory. |
+| `custom` | Choose which generated paths to ignore and add any entries you want, such as `.env` or `node_modules/`. |
+
+Custom entries are passed with repeatable flags:
+
+```bash
+harness init . --yes --name "Acme Shop" --description "An online storefront" \
+  --gitignore custom \
+  --gitignore-path "AGENTS.md" \
+  --gitignore-path ".env" \
+  --gitignore-path "node_modules/"
+```
+
+Existing `.gitignore` content is always preserved, duplicate entries are not added, and only the requested entries are written. Entries must be relative single-line patterns: absolute paths, `..`, backslashes, and project-wide patterns such as `*` or `/**` are rejected so the repository cannot be ignored wholesale.
 
 ## Development
 

@@ -99,6 +99,15 @@ def test_installed_skills_are_listed_with_source(config_factory):
     assert "license: MIT" in rendered
 
 
+def test_documentation_folders_are_listed(config_factory):
+    rendered = templates.render_agents_md(
+        config_factory(docs_folders=("screenshots", "guides"))
+    )
+    assert "`docs/screenshots/`" in rendered
+    assert "`docs/guides/`" in rendered
+    assert ".gitkeep" in rendered
+
+
 def test_missing_skills_message_is_rendered(config_factory):
     rendered = templates.render_agents_md(config_factory())
     assert "No skills are installed yet." in rendered

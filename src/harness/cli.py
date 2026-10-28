@@ -68,6 +68,11 @@ def init_command(
     custom_rules: Optional[List[str]] = typer.Option(
         None, "--custom-rule", help="Additional instruction. Repeatable."
     ),
+    docs_folders: Optional[List[str]] = typer.Option(
+        None,
+        "--docs-folder",
+        help="Additional documentation folder inside docs/, for example screenshots. Repeatable.",
+    ),
     skill_names: Optional[List[str]] = typer.Option(
         None, "--skill", help="Catalog skill to install. Repeatable."
     ),
@@ -81,12 +86,12 @@ def init_command(
         None, "--skills-dir", help="Directory for installed skills."
     ),
     gitignore: Optional[str] = typer.Option(
-        None, "--gitignore", help="Git ignore mode: no, yes, or custom."
+        None, "--gitignore", help="Git ignore mode: no, default, or custom."
     ),
     gitignore_paths: Optional[List[str]] = typer.Option(
         None,
         "--gitignore-path",
-        help="Path to ignore when using the custom git ignore mode. Repeatable.",
+        help="Entry to add when using the custom git ignore mode. Repeatable.",
     ),
     yes: bool = typer.Option(
         False,
@@ -106,6 +111,7 @@ def init_command(
                 agents=agents,
                 preset=preset,
                 custom_rules=custom_rules,
+                docs_folders=docs_folders,
                 skill_names=skill_names,
                 skills_url=skills_url,
                 skills_subdirectory=skills_subdirectory,
@@ -222,6 +228,7 @@ def _config_from_options(
     agents: Optional[List[str]],
     preset: Optional[str],
     custom_rules: Optional[List[str]],
+    docs_folders: Optional[List[str]],
     skill_names: Optional[List[str]],
     skills_url: Optional[str],
     skills_subdirectory: Optional[str],
@@ -291,6 +298,7 @@ def _config_from_options(
         gitignore=gitignore_choice,
         gitignore_paths=selected_gitignore_paths,
         skills_directory=resolved_skills_directory,
+        docs_folders=tuple(docs_folders or ()),
     )
 
 

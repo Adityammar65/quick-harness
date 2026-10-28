@@ -20,6 +20,14 @@ The `docs/` directory holds the project documentation. The files below are creat
 - `docs/{{ doc_file }}`
 {% endfor %}
 
+{% if config.docs_folders %}
+Additional documentation folders, each created with a `.gitkeep` placeholder so Git tracks it:
+
+{% for folder in config.docs_folders %}
+- `docs/{{ folder }}/`
+{% endfor %}
+
+{% endif %}
 Keep the documentation current when architecture, conventions, or workflow change.
 
 ## Agent Roles

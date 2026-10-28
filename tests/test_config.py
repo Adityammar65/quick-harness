@@ -10,6 +10,7 @@ from harness.config import (
     GitIgnoreChoice,
     HarnessConfig,
     Role,
+    ensure_safe_gitignore_entry,
     ensure_safe_relative_path,
     ordered_roles,
 )
@@ -74,6 +75,41 @@ def test_duplicate_skill_names_are_rejected(config_factory):
     )
     with pytest.raises(ConfigurationError, match="Duplicate skill"):
         config.validate()
+
+
+def test_documentation_folders_are_validated(config_factory):
+    config_factory(docs_folders=("screenshots", "guides/api")).validate()
+
+
+def test_unsafe_documentation_folder_is_rejected(config_factory):
+    with pytest.raises(ConfigurationError, match="inside the target directory"):
+        config_factory(docs_folders=("../outside",)).validate()
+
+
+def test_duplicate_documentation_folder_is_rejected(config_factory):
+    with pytest.raises(ConfigurationError, match="Duplicate documentation folder"):
+        config_factory(docs_folders=("screenshots", "screenshots")).validate()
+
+
+def test_documentation_folder_cannot_collide_with_a_documentation_file(config_factory):
+    with pytest.raises(ConfigurationError, match="conflicts with a documentation file"):
+        config_factory(docs_folders=("architecture.md",)).validate()
+
+
+@pytest.mark.parametrize(
+    "entry",
+    ["*", "/*", "/**", "/dist", "~/secrets", "../escape", "line\nbreak", "dotted\\path"],
+)
+def test_unsafe_gitignore_entries_are_rejected(entry):
+    with pytest.raises(ConfigurationError):
+        ensure_safe_gitignore_entry(entry)
+
+
+def test_gitignore_entries_accept_patterns():
+    assert ensure_safe_gitignore_entry("node_modules/") == "node_modules/"
+    assert ensure_safe_gitignore_entry(".env") == ".env"
+    assert ensure_safe_gitignore_entry("!keep.log") == "!keep.log"
+    assert ensure_safe_gitignore_entry("  docs  ") == "docs"
 
 
 def test_ordered_roles_follow_canonical_order(config_factory):

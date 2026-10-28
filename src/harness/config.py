@@ -18,6 +18,7 @@ GITIGNORE_FILE = ".gitignore"
 DOCS_DIRECTORY = "docs"
 
 SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+GITIGNORE_BLOCKED_ENTRIES = {"*", "/*", "**", "**/*", "/", "/**"}
 
 
 class ConfigurationError(ValueError):
@@ -38,7 +39,7 @@ class Role(str, Enum):
 
 class GitIgnoreChoice(str, Enum):
     NO = "no"
-    YES = "yes"
+    DEFAULT = "default"
     CUSTOM = "custom"
 
 
@@ -79,6 +80,7 @@ class HarnessConfig:
     gitignore_paths: tuple[str, ...] = ()
     skills_directory: str = DEFAULT_SKILLS_DIRECTORY
     doc_files: tuple[str, ...] = DEFAULT_DOC_FILES
+    docs_folders: tuple[str, ...] = ()
 
     def validate(self) -> None:
         if not self.app_name.strip():
@@ -101,6 +103,17 @@ class HarnessConfig:
             raise ConfigurationError("At least one documentation file is required.")
         for doc_file in self.doc_files:
             ensure_safe_relative_path(doc_file, "Documentation file")
+
+        seen_folders = set()
+        for folder in self.docs_folders:
+            normalized = ensure_safe_relative_path(folder, "Documentation folder")
+            if normalized in self.doc_files:
+                raise ConfigurationError(
+                    f"Documentation folder conflicts with a documentation file: {folder}"
+                )
+            if normalized in seen_folders:
+                raise ConfigurationError(f"Duplicate documentation folder: {folder}")
+            seen_folders.add(normalized)
 
         ensure_safe_relative_path(self.preset, "Preset")
         ensure_safe_relative_path(self.skills_directory, "Skills directory")
@@ -135,13 +148,39 @@ class HarnessConfig:
             if skill.subdirectory is not None:
                 ensure_safe_relative_path(skill.subdirectory, "Skill subdirectory")
 
-        if self.gitignore is GitIgnoreChoice.CUSTOM and not self.gitignore_paths:
-            raise ConfigurationError("Select at least one path to add to .gitignore.")
+        if self.gitignore is GitIgnoreChoice.CUSTOM:
+            if not self.gitignore_paths:
+                raise ConfigurationError(
+                    "Add at least one .gitignore entry for the custom mode."
+                )
+            for entry in self.gitignore_paths:
+                ensure_safe_gitignore_entry(entry)
 
 
 def ordered_roles(roles: tuple[Role, ...] | list[Role]) -> tuple[Role, ...]:
     selected = set(roles)
     return tuple(role for role in ROLE_ORDER if role in selected)
+
+
+def ensure_safe_gitignore_entry(value: str) -> str:
+    text = (value or "").strip()
+    if not text:
+        raise ConfigurationError("A .gitignore entry must not be empty.")
+    if "\n" in text or "\r" in text:
+        raise ConfigurationError(f"A .gitignore entry must be a single line: {value!r}")
+    if "\\" in text:
+        raise ConfigurationError(f"A .gitignore entry must use forward slashes: {value}")
+
+    pattern = text[1:] if text.startswith("!") else text
+    if pattern in GITIGNORE_BLOCKED_ENTRIES:
+        raise ConfigurationError(f"Refusing to ignore the entire project: {value}")
+    if pattern.startswith("/") or pattern.startswith("~"):
+        raise ConfigurationError(f"A .gitignore entry must be relative: {value}")
+    if any(part == ".." for part in PurePosixPath(pattern).parts):
+        raise ConfigurationError(
+            f"A .gitignore entry must stay inside the project: {value}"
+        )
+    return text
 
 
 def ensure_safe_relative_path(value: str, label: str = "Path") -> str:

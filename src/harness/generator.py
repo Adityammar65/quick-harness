@@ -13,10 +13,12 @@ from harness.config import (
     ConfigurationError,
     GitIgnoreChoice,
     HarnessConfig,
+    ensure_safe_gitignore_entry,
     ensure_safe_relative_path,
 )
 
 GITIGNORE_HEADER = "# AI agent harness"
+DOCUMENTATION_PLACEHOLDER = ".gitkeep"
 INSTRUCTION_KIND = "instruction"
 DOCUMENTATION_KIND = "documentation"
 
@@ -55,6 +57,14 @@ def build_plan(config: HarnessConfig, target_root: Path | str) -> GenerationPlan
         PlannedFile(f"{DOCS_DIRECTORY}/{doc_file}", "", DOCUMENTATION_KIND)
         for doc_file in config.doc_files
     )
+    files.extend(
+        PlannedFile(
+            f"{DOCS_DIRECTORY}/{folder}/{DOCUMENTATION_PLACEHOLDER}",
+            "",
+            DOCUMENTATION_KIND,
+        )
+        for folder in config.docs_folders
+    )
     conflicts = tuple(file.relative_path for file in files if (root / file.relative_path).exists())
     return GenerationPlan(
         target_root=root,
@@ -81,7 +91,12 @@ def apply_plan(plan: GenerationPlan, allow_overwrite: bool = False) -> Generatio
     written_files = []
     for planned in plan.files:
         destination = resolve_target_path(root, planned.relative_path)
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise GenerationError(
+                f"Could not create {planned.relative_path}: {error}"
+            ) from error
         write_text(destination, planned.content)
         written_files.append(planned.relative_path)
 
@@ -106,24 +121,21 @@ def generated_paths(config: HarnessConfig) -> tuple[str, ...]:
 def resolve_gitignore_entries(config: HarnessConfig) -> tuple[str, ...]:
     if config.gitignore is GitIgnoreChoice.NO:
         return ()
-    paths = generated_paths(config)
-    if config.gitignore is GitIgnoreChoice.YES:
-        return paths
+    if config.gitignore is GitIgnoreChoice.DEFAULT:
+        return generated_paths(config)
 
-    selected = []
+    entries = []
+    seen = set()
     for entry in config.gitignore_paths:
-        normalized = entry.strip().rstrip("/")
-        match = next((path for path in paths if path.rstrip("/") == normalized), None)
-        if match is None:
-            available = ", ".join(paths)
-            raise ConfigurationError(
-                f"Unsupported .gitignore path: {entry}. Generated paths: {available}."
-            )
-        if match not in selected:
-            selected.append(match)
-    if not selected:
-        raise ConfigurationError("Select at least one path to add to .gitignore.")
-    return tuple(selected)
+        normalized = ensure_safe_gitignore_entry(entry)
+        key = normalized.rstrip("/")
+        if key in seen:
+            continue
+        seen.add(key)
+        entries.append(normalized)
+    if not entries:
+        raise ConfigurationError("Add at least one .gitignore entry for the custom mode.")
+    return tuple(entries)
 
 
 def apply_gitignore(root: Path, entries: tuple[str, ...]) -> tuple[str, ...]:

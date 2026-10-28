@@ -22,6 +22,8 @@ from harness.config import (
     SkillSelection,
 )
 
+DOCUMENTATION_FOLDER_SUGGESTIONS = ("screenshots", "guides", "assets", "api")
+
 console = Console()
 
 Validator = Callable[[str], bool | str]
@@ -60,6 +62,24 @@ def parse_rule_lines(text: str) -> tuple[str, ...]:
         if stripped:
             rules.append(stripped)
     return tuple(rules)
+
+
+def parse_folder_names(text: str) -> tuple[str, ...]:
+    names = []
+    for chunk in text.replace("\n", ",").split(","):
+        name = chunk.strip().strip("/").strip()
+        if name and name not in names:
+            names.append(name)
+    return tuple(names)
+
+
+def parse_gitignore_entries(text: str) -> tuple[str, ...]:
+    entries = []
+    for chunk in text.replace("\n", ",").split(","):
+        entry = chunk.strip()
+        if entry and entry not in entries:
+            entries.append(entry)
+    return tuple(entries)
 
 
 def collect_harness_config(target: Path) -> HarnessConfig:
@@ -112,6 +132,8 @@ def collect_harness_config(target: Path) -> HarnessConfig:
     if mode in (GenerationMode.CUSTOM, GenerationMode.HYBRID):
         custom_rules = _collect_custom_rules(required=mode is GenerationMode.CUSTOM)
 
+    docs_folders = _collect_documentation_folders()
+
     selected_skills = _collect_skills()
     skills_directory = ask_text(
         "Skills directory",
@@ -129,6 +151,7 @@ def collect_harness_config(target: Path) -> HarnessConfig:
         custom_rules=custom_rules,
         skills=selected_skills,
         skills_directory=skills_directory.strip(),
+        docs_folders=docs_folders,
     )
 
     config = _collect_gitignore(config)
@@ -152,6 +175,20 @@ def _collect_custom_rules(required: bool) -> tuple[str, ...]:
         if not required:
             break
     return tuple(rules)
+
+
+def _collect_documentation_folders() -> tuple[str, ...]:
+    selected = ask_checkbox(
+        "Additional documentation folders inside docs/",
+        choices=[
+            Choice(f"{name}/", value=name) for name in DOCUMENTATION_FOLDER_SUGGESTIONS
+        ],
+    )
+    custom = ask_text(
+        "Other documentation folders, comma separated, or leave empty to skip",
+        default="",
+    )
+    return tuple(dict.fromkeys([*selected, *parse_folder_names(custom)]))
 
 
 def _collect_skills() -> tuple[SkillSelection, ...]:
@@ -200,25 +237,37 @@ def _collect_gitignore(config: HarnessConfig) -> HarnessConfig:
             "No — keep the generated files trackable (recommended)",
             value=GitIgnoreChoice.NO,
         ),
-        Choice("Yes — ignore every generated path", value=GitIgnoreChoice.YES),
-        Choice("Custom — choose individual paths", value=GitIgnoreChoice.CUSTOM),
+        Choice(
+            "Default — ignore all generated harness paths",
+            value=GitIgnoreChoice.DEFAULT,
+        ),
+        Choice(
+            "Custom — choose generated paths and add your own entries",
+            value=GitIgnoreChoice.CUSTOM,
+        ),
     ]
     choice = ask_select(".gitignore handling", choices=choices, default=GitIgnoreChoice.NO)
     if choice is GitIgnoreChoice.NO:
         return replace(config, gitignore=GitIgnoreChoice.NO, gitignore_paths=())
 
     paths = generator.generated_paths(config)
-    if choice is GitIgnoreChoice.YES:
-        return replace(config, gitignore=GitIgnoreChoice.YES, gitignore_paths=paths)
+    if choice is GitIgnoreChoice.DEFAULT:
+        return replace(config, gitignore=GitIgnoreChoice.DEFAULT, gitignore_paths=paths)
 
     selected = ask_checkbox(
-        "Paths to add to .gitignore",
+        "Generated paths to add to .gitignore",
         choices=[Choice(path, value=path) for path in paths],
+        defaults=paths,
     )
+    extra = ask_text(
+        "Additional .gitignore entries, comma separated, or leave empty to skip",
+        default="",
+    )
+    entries = tuple(dict.fromkeys([*selected, *parse_gitignore_entries(extra)]))
     return replace(
         config,
         gitignore=GitIgnoreChoice.CUSTOM,
-        gitignore_paths=tuple(selected),
+        gitignore_paths=entries,
     )
 
 
