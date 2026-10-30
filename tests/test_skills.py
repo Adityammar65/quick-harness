@@ -169,3 +169,44 @@ def test_frontmatter_without_license_is_allowed(tmp_path):
     )
     result = skills.install_skill(str(skill), tmp_path / "skills")
     assert result.license is None
+
+
+def test_clone_failure_includes_full_output(tmp_path, monkeypatch):
+    def failing_git(*args, **kwargs):
+        class Result:
+            returncode = 1
+            stderr = "fatal: repository 'https://example.com/nonexistent.git' not found\n"
+            stdout = "Cloning into 'repository'...\n"
+
+        return Result()
+
+    monkeypatch.setattr(skills.subprocess, "run", failing_git)
+
+    with pytest.raises(skills.SkillSourceError, match="repository.*not found"):
+        skills.install_skill("https://example.com/nonexistent.git", tmp_path / "skills")
+
+
+def test_clone_timeout_is_handled(tmp_path, monkeypatch):
+    def slow_git(*args, **kwargs):
+        raise skills.subprocess.TimeoutExpired("git", 180)
+
+    monkeypatch.setattr(skills.subprocess, "run", slow_git)
+
+    with pytest.raises(skills.SkillSourceError, match="Timed out"):
+        skills.install_skill("https://example.com/skill.git", tmp_path / "skills")
+
+
+def test_concurrent_destination_creation_is_handled(tmp_path, skill_source, monkeypatch):
+    destination = tmp_path / "project" / "skills"
+    result = skills.install_skill(str(skill_source), destination)
+    original_content = (result.destination / "SKILL.md").read_text(encoding="utf-8")
+
+    def blocking_mkdir(*args, **kwargs):
+        pass
+
+    monkeypatch.setattr(Path, "mkdir", blocking_mkdir)
+
+    with pytest.raises(skills.SkillError):
+        skills.install_skill(str(skill_source), destination)
+
+    assert (result.destination / "SKILL.md").read_text(encoding="utf-8") == original_content

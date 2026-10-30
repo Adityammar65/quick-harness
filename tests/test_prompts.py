@@ -194,3 +194,49 @@ def test_documentation_folders_are_collected(monkeypatch, tmp_path):
     config = prompts.collect_harness_config(tmp_path)
 
     assert config.docs_folders == ("assets", "screenshots", "guides")
+
+
+def test_cancelled_prompt_is_raised(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        prompts.questionary, "text", lambda *args, **kwargs: FakeQuestion(None)
+    )
+    with pytest.raises(prompts.PromptCancelled):
+        prompts.collect_harness_config(tmp_path)
+
+
+def test_custom_mode_requires_at_least_one_rule(monkeypatch, tmp_path):
+    rule_answers = iter(["", "", "Keep changes small.", ""])
+    monkeypatch.setattr(
+        prompts,
+        "ask_text",
+        lambda message, default="", validate=None: (
+            next(rule_answers)
+            if message.startswith("Additional rule")
+            else {
+                "Application name": "Demo",
+                "Application description": "Demo app.",
+                "Other documentation folders, comma separated, or leave empty to skip": "",
+                "Custom skill Git URL or local path, or leave empty to skip": "",
+                "Skills directory": "skills",
+            }[message]
+        ),
+    )
+    monkeypatch.setattr(
+        prompts,
+        "ask_select",
+        lambda message, choices, default=None: (
+            GenerationMode.CUSTOM
+            if message == "Generation mode"
+            else GitIgnoreChoice.NO
+        ),
+    )
+    monkeypatch.setattr(
+        prompts,
+        "ask_checkbox",
+        lambda message, choices, defaults=(): [Role.BACKEND] if message == "Agent roles" else [],
+    )
+
+    config = prompts.collect_harness_config(tmp_path)
+
+    assert config.mode is GenerationMode.CUSTOM
+    assert config.custom_rules == ("Keep changes small.",)

@@ -206,8 +206,10 @@ def _collect_custom_rules(required: bool) -> tuple[str, ...]:
             continue
         if rules:
             break
-        if not required:
-            break
+        if required:
+            console.print("At least one rule is required for Custom mode.", style="yellow")
+            continue
+        break
     return tuple(rules)
 
 

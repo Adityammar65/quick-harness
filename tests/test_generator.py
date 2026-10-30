@@ -177,3 +177,23 @@ def test_role_selection_changes_generated_content(tmp_path, config_factory):
     content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert "### Backend" in content
     assert "### Frontend" not in content
+
+
+def test_conflict_check_uses_resolved_paths(tmp_path, config_factory):
+    real_dir = tmp_path / "real_project"
+    real_dir.mkdir()
+    link_dir = tmp_path / "project_link"
+    link_dir.symlink_to(real_dir)
+
+    (real_dir / "AGENTS.md").write_text("Existing.\n", encoding="utf-8")
+    plan = generator.build_plan(config_factory(), link_dir)
+    assert plan.conflicts == ("AGENTS.md",)
+
+
+def test_temporary_filename_length_within_limits(tmp_path, config_factory):
+    long_name = "a" * 200
+    (tmp_path / long_name).mkdir()
+    config = config_factory(app_name=long_name)
+    result = generator.apply_plan(generator.build_plan(config, tmp_path / long_name))
+    assert result.written_files[0] == "AGENTS.md"
+    assert (tmp_path / long_name / "AGENTS.md").is_file()

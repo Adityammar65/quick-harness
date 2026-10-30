@@ -130,6 +130,46 @@ def test_safe_relative_path_is_normalized():
     assert ensure_safe_relative_path("docs/project-overview.md") == "docs/project-overview.md"
 
 
+def test_dot_relative_path_is_rejected():
+    with pytest.raises(ConfigurationError, match="must be a named file"):
+        ensure_safe_relative_path(".", "Preset")
+    with pytest.raises(ConfigurationError, match="must be a named file"):
+        ensure_safe_relative_path(".", "Skills directory")
+    with pytest.raises(ConfigurationError, match="must be a named file"):
+        ensure_safe_relative_path(".", "Documentation file")
+
+
+def test_overlapping_documentation_folders_are_rejected(config_factory):
+    with pytest.raises(ConfigurationError, match="overlaps with another"):
+        config_factory(docs_folders=("screenshots", "screenshots/guides")).validate()
+    with pytest.raises(ConfigurationError, match="overlaps with another"):
+        config_factory(docs_folders=("guides", "guides/api")).validate()
+
+
+def test_bare_negation_gitignore_entry_is_rejected():
+    with pytest.raises(ConfigurationError, match="negation entry must include a pattern"):
+        ensure_safe_gitignore_entry("!")
+
+
+def test_gitignore_preserves_comments_and_negations(tmp_path):
+    (tmp_path / ".gitignore").write_text("# comment\nnode_modules/\n!keep.log\n", encoding="utf-8")
+    from harness import generator
+    from harness.config import GitIgnoreChoice, HarnessConfig, GenerationMode, Role
+
+    config = HarnessConfig(
+        app_name="Test",
+        description="Test",
+        mode=GenerationMode.HYBRID,
+        roles=(Role.FULLSTACK,),
+        gitignore=GitIgnoreChoice.DEFAULT,
+    )
+    generator.apply_plan(generator.build_plan(config, tmp_path))
+    content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
+    assert "# comment" in content
+    assert "!keep.log" in content
+    assert content.count("!keep.log") == 1
+
+
 def test_configuration_is_immutable(config_factory):
     config = config_factory()
     with pytest.raises(FrozenInstanceError):

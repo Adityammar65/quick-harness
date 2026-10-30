@@ -3,7 +3,26 @@ from __future__ import annotations
 import pytest
 
 from harness import templates
+from harness.adapters import ordered_adapters
 from harness.config import GenerationMode, Role
+
+
+def test_ordered_adapters_preserve_input_order():
+    result = ordered_adapters(("opencode", "claude", "hermes"))
+    assert [a.name for a in result] == ["opencode", "claude", "hermes"]
+
+    result = ordered_adapters(("hermes", "claude"))
+    assert [a.name for a in result] == ["hermes", "claude"]
+
+
+def test_ordered_adapters_remove_duplicates():
+    result = ordered_adapters(("claude", "opencode", "claude", "hermes"))
+    assert [a.name for a in result] == ["claude", "opencode", "hermes"]
+
+
+def test_ordered_adapters_reject_unknown():
+    with pytest.raises(Exception, match="Unsupported agent"):
+        ordered_adapters(("claude", "unknown"))
 
 
 def test_rendering_is_deterministic(config_factory):
@@ -121,3 +140,20 @@ def test_unknown_preset_raises(config_factory):
 def test_presets_are_discoverable():
     names = {preset.name for preset in templates.available_presets()}
     assert {"general", "laravel", "react"} <= names
+
+
+def test_preset_with_non_string_description_is_rejected(tmp_path):
+    preset_dir = tmp_path / "presets"
+    preset_dir.mkdir()
+    (preset_dir / "bad-desc.json").write_text(
+        '{"title": "Bad", "description": 123, "conventions": [], "commands": []}',
+        encoding="utf-8",
+    )
+    import harness.templates as templates_module
+    original_preset_dir = templates_module.PRESET_DIRECTORY
+    try:
+        templates_module.PRESET_DIRECTORY = preset_dir
+        with pytest.raises(templates.TemplateError, match="description must be a string"):
+            templates.load_preset("bad-desc")
+    finally:
+        templates_module.PRESET_DIRECTORY = original_preset_dir

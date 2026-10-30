@@ -39,7 +39,6 @@ HANDLED_ERRORS = (
     templates.TemplateError,
     generator.GenerationError,
     skills.SkillError,
-    prompts.PromptCancelled,
 )
 
 
@@ -154,6 +153,8 @@ def init_command(
 
         result = generator.apply_plan(plan, allow_overwrite=overwrite)
         _print_result(result)
+    except prompts.PromptCancelled:
+        console.print("Cancelled; no files were written.")
     except HANDLED_ERRORS as error:
         _fail(str(error))
 
@@ -216,6 +217,8 @@ def install_command(
             f"License: {result.license or declared_license or 'not declared by the skill'}"
         )
         console.print("Review the skill content before use; external skills are untrusted.")
+    except prompts.PromptCancelled:
+        console.print("Cancelled.")
     except HANDLED_ERRORS as error:
         _fail(str(error))
 

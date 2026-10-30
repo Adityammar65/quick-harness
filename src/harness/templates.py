@@ -64,10 +64,13 @@ def load_preset(name: str) -> Preset:
         raise TemplateError(f"Could not read preset {name}: {error}") from error
 
     title = data.get("title")
+    description = data.get("description")
     conventions = data.get("conventions") or []
     commands = data.get("commands") or []
     if not isinstance(title, str) or not title.strip():
         raise TemplateError(f"Preset {name} is missing a title.")
+    if not isinstance(description, str):
+        raise TemplateError(f"Preset {name} description must be a string.")
     if not isinstance(conventions, list) or not all(
         isinstance(entry, str) for entry in conventions
     ):
@@ -78,7 +81,7 @@ def load_preset(name: str) -> Preset:
     return Preset(
         name=name,
         title=title.strip(),
-        description=str(data.get("description") or "").strip(),
+        description=description.strip(),
         conventions=tuple(conventions),
         commands=tuple(commands),
     )

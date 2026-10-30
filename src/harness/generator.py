@@ -65,7 +65,11 @@ def build_plan(config: HarnessConfig, target_root: Path | str) -> GenerationPlan
         )
         for folder in config.docs_folders
     )
-    conflicts = tuple(file.relative_path for file in files if (root / file.relative_path).exists())
+    conflicts = tuple(
+        file.relative_path
+        for file in files
+        if resolve_target_path(root, file.relative_path).exists()
+    )
     return GenerationPlan(
         target_root=root,
         files=tuple(files),
@@ -150,9 +154,13 @@ def apply_gitignore(root: Path, entries: tuple[str, ...]) -> tuple[str, ...]:
         except (OSError, UnicodeDecodeError) as error:
             raise GenerationError(f"Could not read {path}: {error}") from error
 
-    existing_entries = {
-        line.strip().rstrip("/") for line in existing_text.splitlines() if line.strip()
-    }
+    existing_entries = set()
+    for line in existing_text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        existing_entries.add(stripped.rstrip("/"))
+
     added = tuple(entry for entry in entries if entry.rstrip("/") not in existing_entries)
     if not added:
         return ()
@@ -171,7 +179,7 @@ def apply_gitignore(root: Path, entries: tuple[str, ...]) -> tuple[str, ...]:
 
 def write_text(path: Path, text: str) -> None:
     handle, temporary_name = tempfile.mkstemp(
-        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+        dir=path.parent, prefix=".tmp-", suffix=""
     )
     try:
         with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:

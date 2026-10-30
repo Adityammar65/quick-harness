@@ -4,6 +4,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from harness import skills
 from harness.cli import app
 
 runner = CliRunner()
@@ -243,3 +244,34 @@ def test_skills_install_rejects_unknown_catalog_skill(tmp_path: Path):
     )
     assert result.exit_code == 1
     assert "Unknown catalog skill" in result.output
+
+
+def test_init_rejects_unknown_catalog_skill(tmp_path: Path):
+    result = invoke(
+        "init",
+        str(tmp_path),
+        "--yes",
+        "--name",
+        "Demo",
+        "--description",
+        "A demo application.",
+        "--skill",
+        "not-a-skill",
+    )
+    assert result.exit_code == 1
+    assert "Unknown catalog skill" in result.output
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_skills_list_handles_catalog_error(monkeypatch, tmp_path):
+    def failing_catalog():
+        raise skills.SkillError("Catalog unavailable")
+
+    import harness.cli as cli_module
+    import harness.skills as skills_module
+    monkeypatch.setattr(cli_module.skills, "load_catalog", failing_catalog)
+    monkeypatch.setattr(skills_module, "load_catalog", failing_catalog)
+
+    result = invoke("skills", "list")
+    assert result.exit_code == 1
+    assert "Catalog unavailable" in result.output

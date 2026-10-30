@@ -111,6 +111,11 @@ class HarnessConfig:
                 raise ConfigurationError(
                     f"Documentation folder conflicts with a documentation file: {folder}"
                 )
+            for existing in seen_folders:
+                if normalized.startswith(existing + "/") or existing.startswith(normalized + "/"):
+                    raise ConfigurationError(
+                        f"Documentation folder overlaps with another: {folder}"
+                    )
             if normalized in seen_folders:
                 raise ConfigurationError(f"Duplicate documentation folder: {folder}")
             seen_folders.add(normalized)
@@ -171,6 +176,9 @@ def ensure_safe_gitignore_entry(value: str) -> str:
     if "\\" in text:
         raise ConfigurationError(f"A .gitignore entry must use forward slashes: {value}")
 
+    if text == "!":
+        raise ConfigurationError("A .gitignore negation entry must include a pattern.")
+
     pattern = text[1:] if text.startswith("!") else text
     if pattern in GITIGNORE_BLOCKED_ENTRIES:
         raise ConfigurationError(f"Refusing to ignore the entire project: {value}")
@@ -187,6 +195,8 @@ def ensure_safe_relative_path(value: str, label: str = "Path") -> str:
     text = (value or "").strip()
     if not text:
         raise ConfigurationError(f"{label} must not be empty.")
+    if text == ".":
+        raise ConfigurationError(f"{label} must be a named file, preset, or directory, not '.'.")
     if "\\" in text:
         raise ConfigurationError(f"{label} must use forward slashes: {value}")
     candidate = PurePosixPath(text)

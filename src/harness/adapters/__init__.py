@@ -35,8 +35,14 @@ def get_adapter(name: str) -> AgentAdapter:
 
 
 def ordered_adapters(names: tuple[str, ...] | list[str]) -> tuple[AgentAdapter, ...]:
-    selected = {get_adapter(name).name for name in names}
-    return tuple(adapter for adapter in all_adapters() if adapter.name in selected)
+    seen = set()
+    ordered_names = []
+    for name in names:
+        if name not in seen:
+            get_adapter(name)
+            seen.add(name)
+            ordered_names.append(name)
+    return tuple(get_adapter(name) for name in ordered_names)
 
 
 def display_names(names: tuple[str, ...] | list[str]) -> str:

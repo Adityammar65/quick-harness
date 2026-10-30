@@ -197,7 +197,7 @@ def _validate_git_source(source: str) -> None:
 
 
 def _clone_repository(source: str, target: Path, ref: str | None) -> None:
-    command = ["git", "clone", "--depth", "1", "--quiet"]
+    command = ["git", "clone", "--depth", "1"]
     if ref:
         command.extend(["--branch", ref])
     command.extend([source, str(target)])
@@ -217,8 +217,10 @@ def _clone_repository(source: str, target: Path, ref: str | None) -> None:
         raise SkillSourceError(f"Timed out while cloning {source}.") from error
 
     if completed.returncode != 0:
-        details = (completed.stderr or completed.stdout).strip().splitlines()
-        reason = details[-1] if details else "unknown error"
+        stderr = (completed.stderr or "").strip()
+        stdout = (completed.stdout or "").strip()
+        details = "\n".join(line for line in (stderr + "\n" + stdout).splitlines() if line)
+        reason = details if details else "unknown error"
         raise SkillSourceError(f"Failed to clone {source}: {reason}")
 
 
@@ -233,12 +235,16 @@ def _install_from_directory(
 
     destination_parent = destination_parent.resolve()
     destination = destination_parent / metadata.name
+    try:
+        destination_parent.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise SkillError(f"Could not create skills directory {destination_parent}: {error}") from error
+
     if destination.exists():
         raise SkillConflictError(
             f"Skill {metadata.name} already exists at {destination}. Remove it first."
         )
 
-    destination_parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(dir=destination_parent, prefix=f".{metadata.name}-"))
     try:
         _copy_skill_tree(skill_root, staging)
@@ -246,7 +252,7 @@ def _install_from_directory(
     except OSError as error:
         shutil.rmtree(staging, ignore_errors=True)
         raise SkillError(f"Could not install skill {metadata.name}: {error}") from error
-    except BaseException:
+    except Exception:
         shutil.rmtree(staging, ignore_errors=True)
         raise
 
