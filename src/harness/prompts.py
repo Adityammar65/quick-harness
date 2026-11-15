@@ -278,32 +278,35 @@ def _collect_gitignore(config: HarnessConfig) -> HarnessConfig:
             value=GitIgnoreChoice.DEFAULT,
         ),
         Choice(
-            "Custom — choose generated paths and add your own entries",
+            "Custom — enter rules separately for each generated folder",
             value=GitIgnoreChoice.CUSTOM,
         ),
     ]
     choice = ask_select(".gitignore handling", choices=choices, default=GitIgnoreChoice.NO)
     if choice is GitIgnoreChoice.NO:
-        return replace(config, gitignore=GitIgnoreChoice.NO, gitignore_paths=())
+        return replace(
+            config, gitignore=GitIgnoreChoice.NO, gitignore_paths=(), gitignore_rules=()
+        )
 
-    paths = generator.generated_paths(config)
     if choice is GitIgnoreChoice.DEFAULT:
-        return replace(config, gitignore=GitIgnoreChoice.DEFAULT, gitignore_paths=paths)
+        return replace(
+            config, gitignore=GitIgnoreChoice.DEFAULT, gitignore_paths=(), gitignore_rules=()
+        )
 
-    selected = ask_checkbox(
-        "Generated paths to add to .gitignore",
-        choices=[Choice(path, value=path) for path in paths],
-        defaults=paths,
-    )
-    extra = ask_text(
-        "Additional .gitignore entries, comma separated, or leave empty to skip",
-        default="",
-    )
-    entries = tuple(dict.fromkeys([*selected, *parse_gitignore_entries(extra)]))
+    rules = []
+    for directory in generator.generated_directories(config):
+        label = "root" if directory == "." else directory
+        text = ask_text(
+            f".gitignore rules for {label} (comma separated, or leave empty to skip)",
+            default="",
+        )
+        entries = parse_gitignore_entries(text)
+        rules.append((directory, entries))
     return replace(
         config,
         gitignore=GitIgnoreChoice.CUSTOM,
-        gitignore_paths=entries,
+        gitignore_paths=(),
+        gitignore_rules=tuple(rules),
     )
 
 

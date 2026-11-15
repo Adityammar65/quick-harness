@@ -149,19 +149,20 @@ Installation validates the target before copying:
 | --- | --- |
 | `no` | Leave `.gitignore` untouched. This is the default, since shared instructions are useful to teammates. |
 | `default` | Add the generated harness paths: `AGENTS.md`, `docs/`, and the skills directory. |
-| `custom` | Choose which generated paths to ignore and add any entries you want, such as `.env` or `node_modules/`. |
+| `custom` | Enter ignore patterns separately for the project root, `docs/`, and each additional documentation folder. A `.gitignore` is created at each of those locations. |
 
-Custom entries are passed with repeatable flags:
+In interactive mode, enter comma-separated patterns at each prompt; leave a location blank to give it no patterns. Non-interactive runs can pass per-location rules with `--gitignore-rule`:
 
 ```bash
 harness init . --yes --name "Acme Shop" --description "An online storefront" \
   --gitignore custom \
-  --gitignore-path "AGENTS.md" \
-  --gitignore-path ".env" \
-  --gitignore-path "node_modules/"
+  --gitignore-rule ".=.env" \
+  --gitignore-rule ".=node_modules/" \
+  --gitignore-rule "docs=*.tmp" \
+  --gitignore-rule "docs/guides=private/"
 ```
 
-Existing `.gitignore` content is always preserved, duplicate entries are not added, and only the requested entries are written. Entries must be relative single-line patterns: absolute paths, `..`, backslashes, and project-wide patterns such as `*` or `/**` are rejected so the repository cannot be ignored wholesale.
+Use `.` for the project root. The older `--gitignore-path` option remains supported and applies patterns to the root `.gitignore`. Existing `.gitignore` content is preserved and duplicate entries are not added. Patterns must be relative single-line entries: absolute paths, `..`, backslashes, and project-wide patterns such as `*` or `/**` are rejected.
 
 ## Development
 

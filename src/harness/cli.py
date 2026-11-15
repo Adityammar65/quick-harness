@@ -92,6 +92,11 @@ def init_command(
         "--gitignore-path",
         help="Entry to add when using the custom git ignore mode. Repeatable.",
     ),
+    gitignore_rules: Optional[List[str]] = typer.Option(
+        None,
+        "--gitignore-rule",
+        help="Rule for a generated directory as DIR=PATTERN; use . for the project root. Repeatable.",
+    ),
     yes: bool = typer.Option(
         False,
         "--yes",
@@ -117,6 +122,7 @@ def init_command(
                 skills_directory=skills_directory,
                 gitignore=gitignore,
                 gitignore_paths=gitignore_paths,
+                gitignore_rules=gitignore_rules,
             )
         else:
             config = prompts.collect_harness_config(root)
@@ -238,6 +244,7 @@ def _config_from_options(
     skills_directory: Optional[str],
     gitignore: Optional[str],
     gitignore_paths: Optional[List[str]],
+    gitignore_rules: Optional[List[str]],
 ) -> HarnessConfig:
     if not name or not name.strip() or not description or not description.strip():
         raise ConfigurationError(
@@ -282,9 +289,21 @@ def _config_from_options(
         _enum_value(GitIgnoreChoice, gitignore, ".gitignore mode") or GitIgnoreChoice.NO
     )
     selected_gitignore_paths = tuple(gitignore_paths or ())
-    if gitignore_choice is GitIgnoreChoice.CUSTOM and not selected_gitignore_paths:
+    selected_gitignore_rules = []
+    for specification in gitignore_rules or []:
+        if "=" not in specification:
+            raise ConfigurationError(
+                "--gitignore-rule must use DIR=PATTERN, for example docs/.env."
+            )
+        directory, entry = specification.split("=", 1)
+        if not directory.strip() or not entry.strip():
+            raise ConfigurationError("--gitignore-rule requires both DIR and PATTERN.")
+        selected_gitignore_rules.append((directory.strip(), (entry.strip(),)))
+    if gitignore_choice is GitIgnoreChoice.CUSTOM and not (
+        selected_gitignore_paths or selected_gitignore_rules
+    ):
         raise ConfigurationError(
-            "--gitignore-path is required with --gitignore custom."
+            "--gitignore-path or --gitignore-rule is required with --gitignore custom."
         )
 
     resolved_skills_directory = resolve_skills_directory(agent_values, skills_directory)
@@ -300,6 +319,7 @@ def _config_from_options(
         skills=tuple(selections),
         gitignore=gitignore_choice,
         gitignore_paths=selected_gitignore_paths,
+        gitignore_rules=tuple(selected_gitignore_rules),
         skills_directory=resolved_skills_directory,
         docs_folders=tuple(docs_folders or ()),
     )
@@ -389,11 +409,11 @@ def _print_preview(config: HarnessConfig, plan: generator.GenerationPlan) -> Non
         table.add_row(status, planned.relative_path, planned.kind)
     console.print(table)
 
-    if plan.gitignore_entries:
-        console.print(
-            "[bold].gitignore entries to add:[/bold] "
-            + ", ".join(plan.gitignore_entries)
-        )
+    if plan.gitignore_files:
+        console.print("[bold].gitignore files and rules:[/bold]")
+        for directory, entries in plan.gitignore_files:
+            location = ".gitignore" if directory == "." else f"{directory}/.gitignore"
+            console.print(f"  {location}: " + (", ".join(entries) if entries else "(empty)"))
     else:
         console.print("[bold].gitignore:[/bold] no changes")
 

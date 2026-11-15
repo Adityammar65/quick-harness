@@ -78,6 +78,7 @@ class HarnessConfig:
     skills: tuple[SkillSelection, ...] = ()
     gitignore: GitIgnoreChoice = GitIgnoreChoice.NO
     gitignore_paths: tuple[str, ...] = ()
+    gitignore_rules: tuple[tuple[str, tuple[str, ...]], ...] = ()
     skills_directory: str = DEFAULT_SKILLS_DIRECTORY
     doc_files: tuple[str, ...] = DEFAULT_DOC_FILES
     docs_folders: tuple[str, ...] = ()
@@ -154,12 +155,17 @@ class HarnessConfig:
                 ensure_safe_relative_path(skill.subdirectory, "Skill subdirectory")
 
         if self.gitignore is GitIgnoreChoice.CUSTOM:
-            if not self.gitignore_paths:
+            if not self.gitignore_paths and not any(rules for _, rules in self.gitignore_rules):
                 raise ConfigurationError(
                     "Add at least one .gitignore entry for the custom mode."
                 )
             for entry in self.gitignore_paths:
                 ensure_safe_gitignore_entry(entry)
+            for directory, entries in self.gitignore_rules:
+                if directory != ".":
+                    ensure_safe_relative_path(directory, ".gitignore directory")
+                for entry in entries:
+                    ensure_safe_gitignore_entry(entry)
 
 
 def ordered_roles(roles: tuple[Role, ...] | list[Role]) -> tuple[Role, ...]:

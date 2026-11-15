@@ -39,6 +39,7 @@ class GenerationPlan:
     target_root: Path
     files: tuple[PlannedFile, ...]
     gitignore_entries: tuple[str, ...]
+    gitignore_files: tuple[tuple[str, tuple[str, ...]], ...]
     conflicts: tuple[str, ...]
 
 
@@ -74,6 +75,7 @@ def build_plan(config: HarnessConfig, target_root: Path | str) -> GenerationPlan
         target_root=root,
         files=tuple(files),
         gitignore_entries=resolve_gitignore_entries(config),
+        gitignore_files=resolve_gitignore_files(config),
         conflicts=conflicts,
     )
 
@@ -104,7 +106,7 @@ def apply_plan(plan: GenerationPlan, allow_overwrite: bool = False) -> Generatio
         write_text(destination, planned.content)
         written_files.append(planned.relative_path)
 
-    gitignore_added = apply_gitignore(root, plan.gitignore_entries)
+    gitignore_added = apply_gitignore_files(root, plan.gitignore_files)
     return GenerationResult(root, tuple(written_files), gitignore_added)
 
 
@@ -130,16 +132,59 @@ def resolve_gitignore_entries(config: HarnessConfig) -> tuple[str, ...]:
 
     entries = []
     seen = set()
-    for entry in config.gitignore_paths:
+    root_entries = [*config.gitignore_paths]
+    root_entries.extend(
+        entry for directory, rules in config.gitignore_rules if directory in ("", ".")
+        for entry in rules
+    )
+    for entry in root_entries:
         normalized = ensure_safe_gitignore_entry(entry)
         key = normalized.rstrip("/")
         if key in seen:
             continue
         seen.add(key)
         entries.append(normalized)
-    if not entries:
+    if not entries and not any(rules for _, rules in config.gitignore_rules):
         raise ConfigurationError("Add at least one .gitignore entry for the custom mode.")
     return tuple(entries)
+
+
+def generated_directories(config: HarnessConfig) -> tuple[str, ...]:
+    directories = {".", DOCS_DIRECTORY}
+    for folder in config.docs_folders:
+        parts = (Path(DOCS_DIRECTORY) / folder).parts
+        for index in range(1, len(parts) + 1):
+            directories.add("/".join(parts[:index]))
+    return tuple(sorted(directories, key=lambda value: (value.count("/"), value)))
+
+
+def resolve_gitignore_files(config: HarnessConfig) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    if config.gitignore is GitIgnoreChoice.NO:
+        return ()
+    if config.gitignore is GitIgnoreChoice.DEFAULT:
+        return ((".", generated_paths(config)),)
+
+    allowed_directories = set(generated_directories(config))
+    rules: dict[str, list[str]] = {directory: [] for directory in allowed_directories}
+    for entry in config.gitignore_paths:
+        normalized = ensure_safe_gitignore_entry(entry)
+        if normalized not in rules["."]:
+            rules["."].append(normalized)
+    for directory, entries in config.gitignore_rules:
+        normalized_directory = "." if directory in ("", ".") else ensure_safe_relative_path(
+            directory, ".gitignore directory"
+        )
+        if normalized_directory not in allowed_directories:
+            raise ConfigurationError(
+                f".gitignore location is not a generated directory: {directory}"
+            )
+        for entry in entries:
+            normalized = ensure_safe_gitignore_entry(entry)
+            if normalized not in rules[normalized_directory]:
+                rules[normalized_directory].append(normalized)
+    if not any(rules.values()):
+        raise ConfigurationError("Add at least one .gitignore entry for the custom mode.")
+    return tuple((directory, tuple(rules[directory])) for directory in generated_directories(config))
 
 
 def apply_gitignore(root: Path, entries: tuple[str, ...]) -> tuple[str, ...]:
@@ -175,6 +220,24 @@ def apply_gitignore(root: Path, entries: tuple[str, ...]) -> tuple[str, ...]:
 
     write_text(path, new_text)
     return added
+
+
+def apply_gitignore_files(
+    root: Path, files: tuple[tuple[str, tuple[str, ...]], ...]
+) -> tuple[str, ...]:
+    added_all: list[str] = []
+    for directory, entries in files:
+        relative_path = GITIGNORE_FILE if directory == "." else f"{directory}/{GITIGNORE_FILE}"
+        path = resolve_target_path(root, relative_path)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise GenerationError(f"Could not create {directory}: {error}") from error
+        added = apply_gitignore(path.parent, entries)
+        added_all.extend(added if directory == "." else (f"{directory}/{entry}" for entry in added))
+        if not entries and not path.exists():
+            write_text(path, "")
+    return tuple(added_all)
 
 
 def write_text(path: Path, text: str) -> None:
