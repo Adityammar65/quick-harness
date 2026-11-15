@@ -12,7 +12,6 @@ from harness.config import (
     GITIGNORE_ENTRIES,
     GITIGNORE_FILE,
     HarnessConfig,
-    ConfigurationError,
 )
 
 GITIGNORE_HEADER = "# Personal agent workspace"
@@ -36,7 +35,7 @@ class GenerationPlan:
     target_root: Path
     files: tuple[PlannedFile, ...]
     conflicts: tuple[str, ...]
-    docs_skipped: bool
+    docs_existing: bool
 
 
 @dataclass(frozen=True)
@@ -58,23 +57,28 @@ def build_plan(config: HarnessConfig, target_root: Path | str) -> GenerationPlan
     if config.uses_docker:
         files.extend(PlannedFile(path, "", "Docker") for path in DOCKER_FILES)
     docs_path = root / DOCS_DIRECTORY
-    docs_skipped = docs_path.exists()
-    if not docs_skipped:
-        files.extend(
-            PlannedFile(
-                f"{DOCS_DIRECTORY}/{folder}/{DOCUMENTATION_PLACEHOLDER}",
-                "",
-                "documentation folder",
-            )
-            for folder in DEFAULT_DOCS_FOLDERS
-        )
+    docs_existing = docs_path.exists()
+    if docs_existing and not docs_path.is_dir():
+        raise GenerationError(f"Existing {DOCS_DIRECTORY}/ is not a directory.")
+    for folder in DEFAULT_DOCS_FOLDERS:
+        folder_relative = f"{DOCS_DIRECTORY}/{folder}"
+        folder_path = resolve_target_path(root, folder_relative)
+        if folder_path.exists() and not folder_path.is_dir():
+            raise GenerationError(f"Cannot create documentation folder over existing file: {folder_relative}")
+        placeholder_relative = f"{folder_relative}/{DOCUMENTATION_PLACEHOLDER}"
+        placeholder_path = resolve_target_path(root, placeholder_relative)
+        if placeholder_path.exists():
+            if placeholder_path.is_file():
+                continue
+            raise GenerationError(f"Documentation placeholder path is not a file: {placeholder_relative}")
+        files.append(PlannedFile(placeholder_relative, "", "documentation folder"))
 
     conflicts = tuple(
         planned.relative_path
         for planned in files
         if resolve_target_path(root, planned.relative_path).exists()
     )
-    return GenerationPlan(root, tuple(files), conflicts, docs_skipped)
+    return GenerationPlan(root, tuple(files), conflicts, docs_existing)
 
 
 def apply_plan(plan: GenerationPlan, allow_overwrite: bool = False) -> GenerationResult:
@@ -86,6 +90,10 @@ def apply_plan(plan: GenerationPlan, allow_overwrite: bool = False) -> Generatio
         planned.relative_path
         for planned in plan.files
         if resolve_target_path(root, planned.relative_path).exists()
+        and not (
+            planned.kind == "documentation folder"
+            and resolve_target_path(root, planned.relative_path).is_file()
+        )
     ]
     if conflicts and not allow_overwrite:
         raise GenerationError(
@@ -98,6 +106,8 @@ def apply_plan(plan: GenerationPlan, allow_overwrite: bool = False) -> Generatio
     written_files = []
     for planned in plan.files:
         destination = resolve_target_path(root, planned.relative_path)
+        if planned.kind == "documentation folder" and destination.is_file():
+            continue
         try:
             destination.parent.mkdir(parents=True, exist_ok=True)
         except OSError as error:
@@ -121,7 +131,7 @@ def resolve_target_path(root: Path, relative_path: str) -> Path:
 
 
 def apply_gitignore(root: Path) -> tuple[str, ...]:
-    path = root / GITIGNORE_FILE
+    path = resolve_target_path(root, GITIGNORE_FILE)
     existing_text = ""
     if path.exists():
         try:
@@ -138,13 +148,15 @@ def apply_gitignore(root: Path) -> tuple[str, ...]:
     if not added:
         return ()
 
-    new_text = existing_text
-    if new_text and not new_text.endswith("\n"):
-        new_text += "\n"
-    if new_text.strip():
-        new_text += "\n"
-    new_text += "\n".join((GITIGNORE_HEADER, *added)) + "\n"
-    write_text(path, new_text)
+    try:
+        with path.open("a", encoding="utf-8", newline="\n") as stream:
+            if existing_text and not existing_text.endswith("\n"):
+                stream.write("\n")
+            if existing_text.strip():
+                stream.write("\n")
+            stream.write("\n".join((GITIGNORE_HEADER, *added)) + "\n")
+    except OSError as error:
+        raise GenerationError(f"Could not append to {path}: {error}") from error
     return added
 
 

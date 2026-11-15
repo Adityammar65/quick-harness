@@ -17,7 +17,7 @@ def test_plan_contains_personal_files_and_docs_folders(tmp_path, config_factory)
         "docs/logs/.gitkeep",
     ]
     assert plan.conflicts == ()
-    assert not plan.docs_skipped
+    assert not plan.docs_existing
 
 
 def test_docker_files_are_created_empty_only_when_enabled(tmp_path, config_factory):
@@ -56,7 +56,7 @@ def test_agent_md_contains_supplied_title_description_and_rules(tmp_path, config
     assert "(`YYYY-MM-DD`)" in content
     assert "At 7,000 lines" in content
     assert "docs/logs/PROGRESS-LOG-N.md" in content
-    assert "clear `PROGRESS.md`" in content
+    assert "Create new `PROGRESS.md` at project root folder" in content
     assert "`RECAP.md`" in content
     assert "urgent, fix, defer, or no fix" in content
     assert "Flag security risks separately with their impact and urgency" in content
@@ -81,26 +81,47 @@ def test_build_plan_does_not_write_files(tmp_path, config_factory):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_existing_docs_directory_is_left_untouched(tmp_path, config_factory):
+def test_existing_docs_directory_is_preserved_and_extended(tmp_path, config_factory):
     docs = tmp_path / "docs"
     docs.mkdir()
     existing = docs / "existing.md"
     existing.write_text("Keep this.\n", encoding="utf-8")
     plan = generator.build_plan(config_factory(), tmp_path)
-    assert plan.docs_skipped
-    assert not any(path.relative_path.startswith("docs/") for path in plan.files)
+    assert plan.docs_existing
+    assert {path.relative_path for path in plan.files if path.kind == "documentation folder"} == {
+        "docs/screenshots/.gitkeep",
+        "docs/guide/.gitkeep",
+        "docs/logs/.gitkeep",
+    }
     generator.apply_plan(plan)
     assert existing.read_text(encoding="utf-8") == "Keep this.\n"
-    assert not (docs / "screenshots").exists()
+    for folder in ("screenshots", "guide", "logs"):
+        assert (docs / folder / ".gitkeep").is_file()
 
 
-def test_existing_docs_file_is_also_left_untouched(tmp_path, config_factory):
+def test_docs_path_that_is_a_file_is_rejected(tmp_path, config_factory):
     docs = tmp_path / "docs"
     docs.write_text("Existing file", encoding="utf-8")
-    plan = generator.build_plan(config_factory(), tmp_path)
-    assert plan.docs_skipped
-    generator.apply_plan(plan)
+    with pytest.raises(generator.GenerationError, match="docs/ is not a directory"):
+        generator.build_plan(config_factory(), tmp_path)
     assert docs.read_text(encoding="utf-8") == "Existing file"
+
+
+def test_existing_docs_placeholder_is_preserved_while_missing_ones_are_added(
+    tmp_path, config_factory
+):
+    existing_placeholder = tmp_path / "docs" / "screenshots" / ".gitkeep"
+    existing_placeholder.parent.mkdir(parents=True)
+    existing_placeholder.write_text("Keep placeholder content.\n", encoding="utf-8")
+
+    plan = generator.build_plan(config_factory(), tmp_path)
+    assert "docs/screenshots/.gitkeep" not in {file.relative_path for file in plan.files}
+    result = generator.apply_plan(plan)
+
+    assert existing_placeholder.read_text(encoding="utf-8") == "Keep placeholder content.\n"
+    assert "docs/screenshots/.gitkeep" not in result.written_files
+    assert (tmp_path / "docs" / "guide" / ".gitkeep").is_file()
+    assert (tmp_path / "docs" / "logs" / ".gitkeep").is_file()
 
 
 def test_existing_files_are_protected(tmp_path, config_factory):
@@ -136,6 +157,22 @@ def test_gitignore_preserves_existing_entries_and_comments(tmp_path, config_fact
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert content.startswith("# personal\nnode_modules/\nAGENT.md\n")
     assert result.gitignore_added == ("PLAN.md", "PROGRESS.md", "RECAP.md", "docs/logs/")
+
+
+def test_gitignore_appends_without_rewriting_existing_file(tmp_path, monkeypatch):
+    path = tmp_path / ".gitignore"
+    original = b"# keep these bytes\r\nnode_modules/"
+    path.write_bytes(original)
+
+    def fail_rewrite(*args, **kwargs):
+        raise AssertionError("Existing .gitignore must be appended, not rewritten")
+
+    monkeypatch.setattr(generator, "write_text", fail_rewrite)
+    generator.apply_gitignore(tmp_path)
+
+    updated = path.read_bytes()
+    assert updated.startswith(original)
+    assert updated.endswith(b"AGENT.md\nPLAN.md\nPROGRESS.md\nRECAP.md\ndocs/logs/\n")
 
 
 def test_gitignore_entries_are_not_duplicated(tmp_path, config_factory):

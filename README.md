@@ -42,7 +42,7 @@ project-root/
 ├── Dockerfile          # only if Docker is selected
 ├── docker-compose.yml  # only if Docker is selected
 ├── .dockerignore       # only if Docker is selected
-└── docs/                 # only if docs/ does not already exist
+└── docs/                 # existing docs/ is preserved and extended
     ├── screenshots/
     │   └── .gitkeep
     ├── guide/
@@ -62,9 +62,9 @@ project-root/
 
 If Docker is selected, `AGENT.md` says not to run Docker operations or tests and to ask the user to run them. The generator creates empty `Dockerfile`, `docker-compose.yml`, and `.dockerignore` files in the project root. The interactive prompt asks this question; `--yes` assumes the project does not use Docker.
 
-`PLAN.md`, `PROGRESS.md`, and `RECAP.md` are empty files ready to use. If `docs/` already exists, the generator leaves it and its contents untouched. Otherwise it creates `screenshots/`, `guide/`, and `logs/` with `.gitkeep` placeholders. `docs/logs/` is ignored by Git by default for private progress archives.
+`PLAN.md`, `PROGRESS.md`, and `RECAP.md` are empty files ready to use. The generator preserves an existing `docs/` directory and its contents, adding any missing `screenshots/`, `guide/`, and `logs/` folders with `.gitkeep` placeholders. `docs/logs/` is ignored by Git by default for private progress archives.
 
-The root `.gitignore` automatically receives `AGENT.md`, `PLAN.md`, `PROGRESS.md`, `RECAP.md`, and `docs/logs/`. Existing entries are preserved and duplicates are not added.
+The root `.gitignore` automatically receives `AGENT.md`, `PLAN.md`, `PROGRESS.md`, `RECAP.md`, and `docs/logs/`. If it already exists, missing entries are appended at the bottom without rewriting the existing contents; duplicates are skipped.
 
 ## Development
 

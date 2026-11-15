@@ -95,8 +95,10 @@ def _print_preview(plan: generator.GenerationPlan) -> None:
         status = "[yellow]overwrite[/yellow]" if planned.relative_path in plan.conflicts else "[green]create[/green]"
         table.add_row(status, planned.relative_path, planned.kind)
     console.print(table)
-    if plan.docs_skipped:
-        console.print("Existing docs/ detected; documentation folders will be left untouched.")
+    if plan.docs_existing:
+        console.print(
+            "Existing docs/ detected; missing standard folders will be added and existing content preserved."
+        )
     console.print("[bold].gitignore entries:[/bold] " + ", ".join(GITIGNORE_ENTRIES))
 
 

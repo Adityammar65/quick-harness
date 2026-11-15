@@ -56,7 +56,7 @@ def test_init_refuses_to_overwrite_with_yes(tmp_path: Path):
     assert (tmp_path / "AGENT.md").read_text(encoding="utf-8") == "Existing.\n"
 
 
-def test_init_leaves_existing_docs_untouched(tmp_path: Path):
+def test_init_preserves_and_extends_existing_docs(tmp_path: Path):
     docs = tmp_path / "docs"
     docs.mkdir()
     existing = docs / "custom.md"
@@ -65,9 +65,10 @@ def test_init_leaves_existing_docs_untouched(tmp_path: Path):
         "init", str(tmp_path), "--yes", "--name", "Demo", "--description", "A demo."
     )
     assert result.exit_code == 0, result.output
-    assert "docs/ detected" in result.output
+    assert "Existing docs/ detected" in result.output
     assert existing.read_text(encoding="utf-8") == "Custom docs"
-    assert not (docs / "screenshots").exists()
+    for folder in ("screenshots", "guide", "logs"):
+        assert (docs / folder / ".gitkeep").is_file()
 
 
 def test_init_appends_gitignore_entries_by_default(tmp_path: Path):
