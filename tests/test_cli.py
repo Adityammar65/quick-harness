@@ -4,8 +4,9 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from harness import skills
+from harness import prompts
 from harness.cli import app
+from harness.config import HarnessConfig
 
 runner = CliRunner()
 
@@ -14,32 +15,24 @@ def invoke(*arguments: str):
     return runner.invoke(app, list(arguments))
 
 
-def test_init_writes_harness_with_yes(tmp_path: Path):
+def test_init_writes_personal_workspace_with_yes(tmp_path: Path):
     result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
+        "init", str(tmp_path), "--yes", "--name", "Demo", "--description", "A demo application."
     )
     assert result.exit_code == 0, result.output
-    assert (tmp_path / "AGENTS.md").is_file()
-    assert (tmp_path / "docs" / "architecture.md").read_text(encoding="utf-8") == ""
+    assert (tmp_path / "AGENT.md").is_file()
+    for filename in ("PLAN.md", "PROGRESS.md", "RECAP.md"):
+        assert (tmp_path / filename).is_file()
+        assert (tmp_path / filename).read_text(encoding="utf-8") == ""
+    assert (tmp_path / "docs" / "screenshots" / ".gitkeep").is_file()
+    assert (tmp_path / "docs" / "guide" / ".gitkeep").is_file()
+    assert (tmp_path / "docs" / "logs" / ".gitkeep").is_file()
     assert "Generated" in result.output
 
 
 def test_init_dry_run_writes_nothing(tmp_path: Path):
     result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--dry-run",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
+        "init", str(tmp_path), "--yes", "--dry-run", "--name", "Demo", "--description", "A demo."
     )
     assert result.exit_code == 0, result.output
     assert "Dry run" in result.output
@@ -54,224 +47,75 @@ def test_init_yes_requires_name_and_description(tmp_path: Path):
 
 
 def test_init_refuses_to_overwrite_with_yes(tmp_path: Path):
-    (tmp_path / "AGENTS.md").write_text("Existing.\n", encoding="utf-8")
+    (tmp_path / "AGENT.md").write_text("Existing.\n", encoding="utf-8")
     result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
+        "init", str(tmp_path), "--yes", "--name", "Demo", "--description", "A demo."
     )
     assert result.exit_code == 1
     assert "Refusing to overwrite" in result.output
-    assert (tmp_path / "AGENTS.md").read_text(encoding="utf-8") == "Existing.\n"
+    assert (tmp_path / "AGENT.md").read_text(encoding="utf-8") == "Existing.\n"
 
 
-def test_init_custom_mode_requires_rules(tmp_path: Path):
+def test_init_leaves_existing_docs_untouched(tmp_path: Path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    existing = docs / "custom.md"
+    existing.write_text("Custom docs", encoding="utf-8")
     result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--mode",
-        "custom",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
+        "init", str(tmp_path), "--yes", "--name", "Demo", "--description", "A demo."
     )
-    assert result.exit_code == 1
-    assert "Custom mode requires" in result.output
+    assert result.exit_code == 0, result.output
+    assert "docs/ detected" in result.output
+    assert existing.read_text(encoding="utf-8") == "Custom docs"
+    assert not (docs / "screenshots").exists()
 
 
-def test_init_rejects_unknown_role(tmp_path: Path):
+def test_init_appends_gitignore_entries_by_default(tmp_path: Path):
+    (tmp_path / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
     result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--role",
-        "designer",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
-    )
-    assert result.exit_code == 1
-    assert "Unsupported role" in result.output
-
-
-def test_init_applies_gitignore_choice(tmp_path: Path):
-    result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
-        "--agent",
-        "opencode",
-        "--gitignore",
-        "default",
+        "init", str(tmp_path), "--yes", "--name", "Demo", "--description", "A demo."
     )
     assert result.exit_code == 0, result.output
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
-    assert "AGENTS.md" in content
-    assert ".opencode/skills/" in content
+    assert content.startswith("node_modules/\n")
+    for entry in ("AGENT.md", "PLAN.md", "PROGRESS.md", "RECAP.md", "docs/logs/"):
+        assert content.splitlines().count(entry) == 1
 
 
-def test_init_creates_requested_documentation_folders(tmp_path: Path):
+def test_init_interactive_flow_uses_collected_config(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(
+        prompts,
+        "collect_harness_config",
+        lambda root: HarnessConfig("Demo", "A demo."),
+    )
+    monkeypatch.setattr(prompts, "ask_confirm", lambda *args, **kwargs: True)
+    result = invoke("init", str(tmp_path))
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "AGENT.md").is_file()
+
+
+def test_interactive_docker_choice_generates_docker_files(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(
+        prompts,
+        "collect_harness_config",
+        lambda root: HarnessConfig("Demo", "A demo.", uses_docker=True),
+    )
+    monkeypatch.setattr(prompts, "ask_confirm", lambda *args, **kwargs: True)
+    result = invoke("init", str(tmp_path))
+    assert result.exit_code == 0, result.output
+    for filename in ("Dockerfile", "docker-compose.yml", ".dockerignore"):
+        assert (tmp_path / filename).read_text(encoding="utf-8") == ""
+
+
+def test_yes_mode_defaults_to_non_docker(tmp_path: Path):
     result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
-        "--docs-folder",
-        "screenshots",
-        "--docs-folder",
-        "guides/api",
+        "init", str(tmp_path), "--yes", "--name", "Demo", "--description", "A demo."
     )
     assert result.exit_code == 0, result.output
-    assert (tmp_path / "docs" / "screenshots" / ".gitkeep").is_file()
-    assert (tmp_path / "docs" / "guides" / "api" / ".gitkeep").is_file()
-    content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
-    assert "`docs/screenshots/`" in content
-    assert "`docs/guides/api/`" in content
+    assert not (tmp_path / "Dockerfile").exists()
 
 
-def test_init_custom_gitignore_accepts_arbitrary_entries(tmp_path: Path):
-    result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
-        "--gitignore",
-        "custom",
-        "--gitignore-path",
-        "AGENTS.md",
-        "--gitignore-path",
-        ".env",
-        "--gitignore-path",
-        "node_modules/",
-    )
+def test_skills_command_is_removed():
+    result = invoke("--help")
     assert result.exit_code == 0, result.output
-    lines = (tmp_path / ".gitignore").read_text(encoding="utf-8").splitlines()
-    assert "AGENTS.md" in lines
-    assert ".env" in lines
-    assert "node_modules/" in lines
-    assert "docs/" not in lines
-
-
-def test_init_rejects_project_wide_gitignore_entry(tmp_path: Path):
-    result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
-        "--gitignore",
-        "custom",
-        "--gitignore-path",
-        "*",
-    )
-    assert result.exit_code == 1
-    assert "Refusing to ignore the entire project" in result.output
-    assert list(tmp_path.iterdir()) == []
-
-
-def test_init_installs_skill_from_local_directory(tmp_path: Path, skill_source: Path):
-    result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
-        "--agent",
-        "claude",
-        "--skills-url",
-        str(skill_source),
-    )
-    assert result.exit_code == 0, result.output
-    installed = tmp_path / ".claude" / "skills" / "demo-skill" / "SKILL.md"
-    assert installed.is_file()
-    assert "demo-skill" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
-
-
-def test_skills_list_shows_catalog():
-    result = invoke("skills", "list")
-    assert result.exit_code == 0, result.output
-    assert "test-driven-development" in result.output
-    assert "MIT" in result.output
-
-
-def test_skills_install_from_local_directory(tmp_path: Path, skill_source: Path):
-    result = invoke(
-        "skills",
-        "install",
-        "--url",
-        str(skill_source),
-        "--target",
-        str(tmp_path),
-    )
-    assert result.exit_code == 0, result.output
-    assert (tmp_path / "skills" / "demo-skill" / "SKILL.md").is_file()
-
-
-def test_skills_install_requires_a_source(tmp_path: Path):
-    result = invoke("skills", "install", "--target", str(tmp_path))
-    assert result.exit_code == 1
-    assert "Provide a catalog skill name or --url" in result.output
-
-
-def test_skills_install_rejects_unknown_catalog_skill(tmp_path: Path):
-    result = invoke(
-        "skills",
-        "install",
-        "not-a-skill",
-        "--target",
-        str(tmp_path),
-    )
-    assert result.exit_code == 1
-    assert "Unknown catalog skill" in result.output
-
-
-def test_init_rejects_unknown_catalog_skill(tmp_path: Path):
-    result = invoke(
-        "init",
-        str(tmp_path),
-        "--yes",
-        "--name",
-        "Demo",
-        "--description",
-        "A demo application.",
-        "--skill",
-        "not-a-skill",
-    )
-    assert result.exit_code == 1
-    assert "Unknown catalog skill" in result.output
-    assert list(tmp_path.iterdir()) == []
-
-
-def test_skills_list_handles_catalog_error(monkeypatch, tmp_path):
-    def failing_catalog():
-        raise skills.SkillError("Catalog unavailable")
-
-    import harness.cli as cli_module
-    import harness.skills as skills_module
-    monkeypatch.setattr(cli_module.skills, "load_catalog", failing_catalog)
-    monkeypatch.setattr(skills_module, "load_catalog", failing_catalog)
-
-    result = invoke("skills", "list")
-    assert result.exit_code == 1
-    assert "Catalog unavailable" in result.output
+    assert "skills" not in result.output.lower()
