@@ -15,6 +15,14 @@ def invoke(*arguments: str):
     return runner.invoke(app, list(arguments))
 
 
+class FakeQuestion:
+    def __init__(self, answer):
+        self.answer = answer
+
+    def ask(self):
+        return self.answer
+
+
 def test_init_writes_personal_workspace_with_yes(tmp_path: Path):
     result = invoke(
         "init", str(tmp_path), "--yes", "--name", "Demo", "--description", "A demo application."
@@ -95,6 +103,25 @@ def test_init_interactive_flow_uses_collected_config(monkeypatch, tmp_path: Path
     assert (tmp_path / "AGENT.md").is_file()
 
 
+def test_interactive_no_docker_does_not_generate_docker_files(monkeypatch, tmp_path: Path):
+    text_answers = iter(("Demo", "A demo."))
+    confirm_answers = iter((False, True))
+    monkeypatch.setattr(
+        prompts.questionary,
+        "text",
+        lambda *args, **kwargs: FakeQuestion(next(text_answers)),
+    )
+    monkeypatch.setattr(
+        prompts.questionary,
+        "confirm",
+        lambda *args, **kwargs: FakeQuestion(next(confirm_answers)),
+    )
+    result = invoke("init", str(tmp_path))
+    assert result.exit_code == 0, result.output
+    for filename in ("Dockerfile", "docker-compose.yml", ".dockerignore"):
+        assert not (tmp_path / filename).exists()
+
+
 def test_interactive_docker_choice_generates_docker_files(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(
         prompts,
@@ -113,7 +140,8 @@ def test_yes_mode_defaults_to_non_docker(tmp_path: Path):
         "init", str(tmp_path), "--yes", "--name", "Demo", "--description", "A demo."
     )
     assert result.exit_code == 0, result.output
-    assert not (tmp_path / "Dockerfile").exists()
+    for filename in ("Dockerfile", "docker-compose.yml", ".dockerignore"):
+        assert not (tmp_path / filename).exists()
 
 
 def test_skills_command_is_removed():

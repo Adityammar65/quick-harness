@@ -54,7 +54,7 @@ def build_plan(config: HarnessConfig, target_root: Path | str) -> GenerationPlan
         PlannedFile("PROGRESS.md", "", "work log"),
         PlannedFile("RECAP.md", "", "work log"),
     ]
-    if config.uses_docker:
+    if config.uses_docker is True:
         files.extend(PlannedFile(path, "", "Docker") for path in DOCKER_FILES)
     docs_path = root / DOCS_DIRECTORY
     docs_existing = docs_path.exists()

@@ -27,3 +27,5 @@ class HarnessConfig:
             raise ConfigurationError("The project title must not be empty.")
         if not self.description.strip():
             raise ConfigurationError("The project description must not be empty.")
+        if not isinstance(self.uses_docker, bool):
+            raise ConfigurationError("Docker selection must be a yes/no value.")

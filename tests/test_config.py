@@ -16,6 +16,12 @@ def test_required_fields_cannot_be_empty(config_factory, field, value):
         config.validate()
 
 
+@pytest.mark.parametrize("value", ["false", 0, None])
+def test_docker_selection_must_be_boolean(config_factory, value):
+    with pytest.raises(ConfigurationError, match="yes/no value"):
+        config_factory(uses_docker=value).validate()
+
+
 def test_configuration_is_immutable(config_factory):
     config = config_factory()
     with pytest.raises(FrozenInstanceError):

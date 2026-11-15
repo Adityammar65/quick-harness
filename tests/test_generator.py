@@ -44,6 +44,13 @@ def test_docker_files_and_rules_are_absent_by_default(tmp_path, config_factory):
     assert "Docker Rules" not in agent
 
 
+def test_non_docker_mode_preserves_preexisting_dockerignore(tmp_path, config_factory):
+    dockerignore = tmp_path / ".dockerignore"
+    dockerignore.write_text("existing framework rules\n", encoding="utf-8")
+    generator.apply_plan(generator.build_plan(config_factory(), tmp_path))
+    assert dockerignore.read_text(encoding="utf-8") == "existing framework rules\n"
+
+
 def test_agent_md_contains_supplied_title_description_and_rules(tmp_path, config_factory):
     generator.apply_plan(generator.build_plan(config_factory(), tmp_path))
     content = (tmp_path / "AGENT.md").read_text(encoding="utf-8")
