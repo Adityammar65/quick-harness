@@ -109,7 +109,7 @@ def _print_result(result: generator.GenerationResult) -> None:
     )
     if result.gitignore_added:
         console.print(".gitignore updated with: " + ", ".join(result.gitignore_added))
-    console.print("Next: review AGENT.md, then track work in PLAN.md and PROGRESS.md.")
+    console.print("Next: review AGENT.md, then track work in PROGRESS.md.")
 
 
 def _fail(message: str) -> None:

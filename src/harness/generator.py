@@ -50,7 +50,6 @@ def build_plan(config: HarnessConfig, target_root: Path | str) -> GenerationPlan
     root = Path(target_root).expanduser().resolve()
     files = [
         PlannedFile("AGENT.md", templates.render_agent_md(config), "instructions"),
-        PlannedFile("PLAN.md", "", "work log"),
         PlannedFile("PROGRESS.md", "", "work log"),
         PlannedFile("RECAP.md", "", "work log"),
     ]

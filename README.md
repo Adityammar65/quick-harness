@@ -1,6 +1,6 @@
 # Quick Harness: Personal Use
 
-A small local CLI that creates a personal workspace for an AI coding agent. It asks for a project title, description, and whether the project uses Docker, then creates `AGENT.md`, `PLAN.md`, `PROGRESS.md`, `RECAP.md`, and—when appropriate—documentation and Docker files.
+A small local CLI that creates a personal workspace for an AI coding agent. It asks for a project title, description, and whether the project uses Docker, then creates `AGENT.md`, `PROGRESS.md`, `RECAP.md`, and—when appropriate—documentation and Docker files.
 
 ## Requirements
 
@@ -35,7 +35,6 @@ harness init . --yes --name "Acme Shop" --description "An online storefront"
 ```text
 project-root/
 ├── AGENT.md
-├── PLAN.md
 ├── PROGRESS.md
 ├── RECAP.md
 ├── .gitignore
@@ -54,17 +53,16 @@ project-root/
 `AGENT.md` contains the project title and description, followed by these rules:
 
 1. Functionality first; appearance second.
-2. Read and implement `PLAN.md` only after the user says a new plan has been added; stay within its scope.
-3. Keep `PROGRESS.md` concise, to the point, and in English. Date each action or operation entry as `YYYY-MM-DD` and keep adding entries throughout the project.
-4. At 7,000 lines, copy it to `docs/logs/PROGRESS-LOG-N.md` using the next unused number, create `docs/logs/` if needed, clear `PROGRESS.md`, and continue logging.
-5. Read and triage `RECAP.md` only after the user says it has new findings: urgent, fix, defer, or no fix. Flag security risks with their impact and urgency. Fix only in-scope items; seek approval for out-of-scope recommendations.
-6. Leave one blank line above and below comments; use marker comments only.
+2. Keep `PROGRESS.md` concise, to the point, and in English. Date each action or operation entry as `YYYY-MM-DD` and keep adding entries throughout the project.
+3. At 7,000 lines, copy it to `docs/logs/PROGRESS-LOG-N.md` using the next unused number, create `docs/logs/` if needed, clear `PROGRESS.md`, and continue logging.
+4. Read and triage `RECAP.md` only after the user says it has new findings: urgent, fix, defer, or no fix. Flag security risks with their impact and urgency. Fix only in-scope items; seek approval for out-of-scope recommendations.
+5. Leave one blank line above and below comments; use marker comments only.
 
 If Docker is selected, `AGENT.md` says not to run Docker operations or tests and to ask the user to run them. The generator creates empty `Dockerfile`, `docker-compose.yml`, and `.dockerignore` files in the project root. The interactive prompt asks this question; `--yes` assumes the project does not use Docker.
 
-`PLAN.md`, `PROGRESS.md`, and `RECAP.md` are empty files ready to use. The generator preserves an existing `docs/` directory and its contents, adding any missing `screenshots/`, `guide/`, and `logs/` folders with `.gitkeep` placeholders. `docs/logs/` is ignored by Git by default for private progress archives.
+`PROGRESS.md` and `RECAP.md` are empty files ready to use. The generator preserves an existing `docs/` directory and its contents, adding any missing `screenshots/`, `guide/`, and `logs/` folders with `.gitkeep` placeholders. `docs/logs/` is ignored by Git by default for private progress archives.
 
-The root `.gitignore` automatically receives `AGENT.md`, `PLAN.md`, `PROGRESS.md`, `RECAP.md`, and `docs/logs/`. If it already exists, missing entries are appended at the bottom without rewriting the existing contents; duplicates are skipped.
+The root `.gitignore` automatically receives `AGENT.md`, `PROGRESS.md`, `RECAP.md`, and `docs/logs/`. If it already exists, missing entries are appended at the bottom without rewriting the existing contents; duplicates are skipped.
 
 ## Development
 

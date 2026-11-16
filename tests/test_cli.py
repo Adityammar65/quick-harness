@@ -29,7 +29,7 @@ def test_init_writes_personal_workspace_with_yes(tmp_path: Path):
     )
     assert result.exit_code == 0, result.output
     assert (tmp_path / "AGENT.md").is_file()
-    for filename in ("PLAN.md", "PROGRESS.md", "RECAP.md"):
+    for filename in ("PROGRESS.md", "RECAP.md"):
         assert (tmp_path / filename).is_file()
         assert (tmp_path / filename).read_text(encoding="utf-8") == ""
     assert (tmp_path / "docs" / "screenshots" / ".gitkeep").is_file()
@@ -87,7 +87,7 @@ def test_init_appends_gitignore_entries_by_default(tmp_path: Path):
     assert result.exit_code == 0, result.output
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert content.startswith("node_modules/\n")
-    for entry in ("AGENT.md", "PLAN.md", "PROGRESS.md", "RECAP.md", "docs/logs/"):
+    for entry in ("AGENT.md", "PROGRESS.md", "RECAP.md", "docs/logs/"):
         assert content.splitlines().count(entry) == 1
 
 

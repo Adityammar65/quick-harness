@@ -9,7 +9,6 @@ def test_plan_contains_personal_files_and_docs_folders(tmp_path, config_factory)
     plan = generator.build_plan(config_factory(), tmp_path)
     assert [planned.relative_path for planned in plan.files] == [
         "AGENT.md",
-        "PLAN.md",
         "PROGRESS.md",
         "RECAP.md",
         "docs/screenshots/.gitkeep",
@@ -24,9 +23,9 @@ def test_docker_files_are_created_empty_only_when_enabled(tmp_path, config_facto
     config = config_factory(uses_docker=True)
     plan = generator.build_plan(config, tmp_path)
     docker_paths = ("Dockerfile", "docker-compose.yml", ".dockerignore")
-    assert tuple(path.relative_path for path in plan.files[4:7]) == docker_paths
+    assert tuple(path.relative_path for path in plan.files[3:6]) == docker_paths
     result = generator.apply_plan(plan)
-    assert result.written_files[4:7] == docker_paths
+    assert result.written_files[3:6] == docker_paths
     for filename in docker_paths:
         assert (tmp_path / filename).is_file()
         assert (tmp_path / filename).read_text(encoding="utf-8") == ""
@@ -56,8 +55,6 @@ def test_agent_md_contains_supplied_title_description_and_rules(tmp_path, config
     content = (tmp_path / "AGENT.md").read_text(encoding="utf-8")
     assert content.startswith("# Acme Shop\n\nAn online storefront")
     assert "Functionality first; appearance second." in content
-    assert "only after the user says a new plan has been added" in content
-    assert "stay within its scope" in content
     assert "`PROGRESS.md`" in content
     assert "in English" in content
     assert "(`YYYY-MM-DD`)" in content
@@ -74,8 +71,8 @@ def test_agent_md_contains_supplied_title_description_and_rules(tmp_path, config
 
 def test_apply_plan_writes_empty_work_files_and_docs_placeholders(tmp_path, config_factory):
     result = generator.apply_plan(generator.build_plan(config_factory(), tmp_path))
-    assert result.written_files[:4] == ("AGENT.md", "PLAN.md", "PROGRESS.md", "RECAP.md")
-    for filename in ("PLAN.md", "PROGRESS.md", "RECAP.md"):
+    assert result.written_files[:3] == ("AGENT.md", "PROGRESS.md", "RECAP.md")
+    for filename in ("PROGRESS.md", "RECAP.md"):
         assert (tmp_path / filename).read_text(encoding="utf-8") == ""
     for folder in ("screenshots", "guide", "logs"):
         placeholder = tmp_path / "docs" / folder / ".gitkeep"
@@ -148,11 +145,11 @@ def test_overwrite_is_applied_when_confirmed(tmp_path, config_factory):
     assert "# Acme Shop" in (tmp_path / "AGENT.md").read_text(encoding="utf-8")
 
 
-def test_default_gitignore_adds_all_four_files(tmp_path, config_factory):
+def test_default_gitignore_adds_work_files(tmp_path, config_factory):
     result = generator.apply_plan(generator.build_plan(config_factory(), tmp_path))
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert result.gitignore_added == (
-        "AGENT.md", "PLAN.md", "PROGRESS.md", "RECAP.md", "docs/logs/"
+        "AGENT.md", "PROGRESS.md", "RECAP.md", "docs/logs/"
     )
     for entry in result.gitignore_added:
         assert entry in content.splitlines()
@@ -163,7 +160,7 @@ def test_gitignore_preserves_existing_entries_and_comments(tmp_path, config_fact
     result = generator.apply_plan(generator.build_plan(config_factory(), tmp_path))
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert content.startswith("# personal\nnode_modules/\nAGENT.md\n")
-    assert result.gitignore_added == ("PLAN.md", "PROGRESS.md", "RECAP.md", "docs/logs/")
+    assert result.gitignore_added == ("PROGRESS.md", "RECAP.md", "docs/logs/")
 
 
 def test_gitignore_appends_without_rewriting_existing_file(tmp_path, monkeypatch):
@@ -179,7 +176,7 @@ def test_gitignore_appends_without_rewriting_existing_file(tmp_path, monkeypatch
 
     updated = path.read_bytes()
     assert updated.startswith(original)
-    assert updated.endswith(b"AGENT.md\nPLAN.md\nPROGRESS.md\nRECAP.md\ndocs/logs/\n")
+    assert updated.endswith(b"AGENT.md\nPROGRESS.md\nRECAP.md\ndocs/logs/\n")
 
 
 def test_gitignore_entries_are_not_duplicated(tmp_path, config_factory):
@@ -187,7 +184,7 @@ def test_gitignore_entries_are_not_duplicated(tmp_path, config_factory):
     second = generator.apply_plan(generator.build_plan(config_factory(), tmp_path), allow_overwrite=True)
     lines = (tmp_path / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert second.gitignore_added == ()
-    for entry in ("AGENT.md", "PLAN.md", "PROGRESS.md", "RECAP.md", "docs/logs/"):
+    for entry in ("AGENT.md", "PROGRESS.md", "RECAP.md", "docs/logs/"):
         assert lines.count(entry) == 1
 
 

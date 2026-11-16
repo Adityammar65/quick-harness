@@ -3,13 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 INSTRUCTION_FILE = "AGENT.md"
-PLAN_FILE = "PLAN.md"
 PROGRESS_FILE = "PROGRESS.md"
 RECAP_FILE = "RECAP.md"
 GITIGNORE_FILE = ".gitignore"
 DOCS_DIRECTORY = "docs"
 DEFAULT_DOCS_FOLDERS = ("screenshots", "guide", "logs")
-GITIGNORE_ENTRIES = (INSTRUCTION_FILE, PLAN_FILE, PROGRESS_FILE, RECAP_FILE, "docs/logs/")
+GITIGNORE_ENTRIES = (INSTRUCTION_FILE, PROGRESS_FILE, RECAP_FILE, "docs/logs/")
 
 
 class ConfigurationError(ValueError):
