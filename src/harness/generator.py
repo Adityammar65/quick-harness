@@ -11,6 +11,7 @@ from harness.config import (
     DOCS_DIRECTORY,
     GITIGNORE_ENTRIES,
     GITIGNORE_FILE,
+    INSTRUCTION_FILE,
     HarnessConfig,
 )
 
@@ -49,7 +50,7 @@ def build_plan(config: HarnessConfig, target_root: Path | str) -> GenerationPlan
     config.validate()
     root = Path(target_root).expanduser().resolve()
     files = [
-        PlannedFile("AGENT.md", templates.render_agent_md(config), "instructions"),
+        PlannedFile(INSTRUCTION_FILE, templates.render_context_md(config), "project context"),
         PlannedFile("PROGRESS.md", "", "work log"),
         PlannedFile("RECAP.md", "", "work log"),
     ]

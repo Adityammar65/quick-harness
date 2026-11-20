@@ -29,13 +29,14 @@ def init_command(
     ),
     name: Optional[str] = typer.Option(None, "--name", help="Project title."),
     description: Optional[str] = typer.Option(None, "--description", help="Project description."),
+    tech_stack: Optional[str] = typer.Option(None, "--tech-stack", help="Project tech stack."),
     yes: bool = typer.Option(
-        False, "--yes", "-y", help="Run without prompts. Requires --name and --description."
+        False, "--yes", "-y", help="Run without prompts. Requires --name, --description, and --tech-stack."
     ),
 ) -> None:
     try:
         root = _prepare_root(target)
-        config = _config_from_options(name, description) if yes else prompts.collect_harness_config(root)
+        config = _config_from_options(name, description, tech_stack) if yes else prompts.collect_harness_config(root)
         plan = generator.build_plan(config, root)
         _print_preview(plan)
 
@@ -69,10 +70,10 @@ def init_command(
         _fail(str(error))
 
 
-def _config_from_options(name: Optional[str], description: Optional[str]) -> HarnessConfig:
-    if not name or not name.strip() or not description or not description.strip():
-        raise ConfigurationError("--name and --description are required when running with --yes.")
-    config = HarnessConfig(app_name=name.strip(), description=description.strip())
+def _config_from_options(name: Optional[str], description: Optional[str], tech_stack: Optional[str]) -> HarnessConfig:
+    if not name or not name.strip() or not description or not description.strip() or not tech_stack or not tech_stack.strip():
+        raise ConfigurationError("--name, --description, and --tech-stack are required when running with --yes.")
+    config = HarnessConfig(app_name=name.strip(), description=description.strip(), tech_stack=tech_stack.strip())
     config.validate()
     return config
 
@@ -109,7 +110,7 @@ def _print_result(result: generator.GenerationResult) -> None:
     )
     if result.gitignore_added:
         console.print(".gitignore updated with: " + ", ".join(result.gitignore_added))
-    console.print("Next: review AGENT.md, then track work in PROGRESS.md.")
+    console.print("Next: review CONTEXT.md, then track work in PROGRESS.md.")
 
 
 def _fail(message: str) -> None:

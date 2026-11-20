@@ -3,11 +3,15 @@ from __future__ import annotations
 from harness.config import HarnessConfig
 
 
-def render_agent_md(config: HarnessConfig) -> str:
+def render_context_md(config: HarnessConfig) -> str:
     config.validate()
     return f"""# {config.app_name.strip()}
 
 {config.description.strip()}
+
+## Tech Stack
+
+{config.tech_stack.strip()}
 
 ## Rules
 

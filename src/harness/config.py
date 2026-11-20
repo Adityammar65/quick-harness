@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-INSTRUCTION_FILE = "AGENT.md"
+
+INSTRUCTION_FILE = "CONTEXT.md"
 PROGRESS_FILE = "PROGRESS.md"
 RECAP_FILE = "RECAP.md"
 GITIGNORE_FILE = ".gitignore"
@@ -19,6 +20,7 @@ class ConfigurationError(ValueError):
 class HarnessConfig:
     app_name: str
     description: str
+    tech_stack: str
     uses_docker: bool = False
 
     def validate(self) -> None:
@@ -26,5 +28,7 @@ class HarnessConfig:
             raise ConfigurationError("The project title must not be empty.")
         if not self.description.strip():
             raise ConfigurationError("The project description must not be empty.")
+        if not self.tech_stack.strip():
+            raise ConfigurationError("The tech stack must not be empty.")
         if not isinstance(self.uses_docker, bool):
             raise ConfigurationError("Docker selection must be a yes/no value.")

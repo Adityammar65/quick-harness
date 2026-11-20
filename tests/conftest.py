@@ -11,6 +11,7 @@ def config_factory():
         defaults = {
             "app_name": "Acme Shop",
             "description": "An online storefront for test fixtures.",
+            "tech_stack": "Python, Typer",
         }
         defaults.update(overrides)
         return HarnessConfig(**defaults)

@@ -9,7 +9,7 @@ def test_default_configuration_is_valid(config_factory):
     config_factory().validate()
 
 
-@pytest.mark.parametrize("field,value", [("app_name", "  "), ("description", "")])
+@pytest.mark.parametrize("field,value", [("app_name", "  "), ("description", ""), ("tech_stack", " ")])
 def test_required_fields_cannot_be_empty(config_factory, field, value):
     config = config_factory(**{field: value})
     with pytest.raises(ConfigurationError):

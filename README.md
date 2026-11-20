@@ -1,6 +1,6 @@
 # Quick Harness: Personal Use
 
-A small local CLI that creates a personal workspace for an AI coding agent. It asks for a project title, description, and whether the project uses Docker, then creates `AGENT.md`, `PROGRESS.md`, `RECAP.md`, and—when appropriate—documentation and Docker files.
+A small local CLI that creates a personal workspace for an AI coding agent. It asks for a project title, description, tech stack, and whether the project uses Docker, then creates `CONTEXT.md`, `PROGRESS.md`, `RECAP.md`, and—when appropriate—documentation and Docker files.
 
 ## Requirements
 
@@ -25,7 +25,7 @@ harness init /path/to/project
 For scripts, pass the title and description directly:
 
 ```bash
-harness init . --yes --name "Acme Shop" --description "An online storefront"
+harness init . --yes --name "Acme Shop" --description "An online storefront" --tech-stack "Python, Typer"
 ```
 
 `--dry-run` previews planned files without writing them. Existing generated files are protected; interactive runs ask before overwriting, and `--yes` refuses to overwrite.
@@ -34,7 +34,7 @@ harness init . --yes --name "Acme Shop" --description "An online storefront"
 
 ```text
 project-root/
-├── AGENT.md
+├── CONTEXT.md
 ├── PROGRESS.md
 ├── RECAP.md
 ├── .gitignore
@@ -50,7 +50,7 @@ project-root/
         └── .gitkeep
 ```
 
-`AGENT.md` contains the project title and description, followed by these rules:
+`CONTEXT.md` contains the project title, description, and tech stack, followed by rules:
 
 1. Functionality first; appearance second.
 2. Keep `PROGRESS.md` concise, to the point, and in English. Date each action or operation entry as `YYYY-MM-DD` and keep adding entries throughout the project.
@@ -58,11 +58,11 @@ project-root/
 4. Read and triage `RECAP.md` only after the user says it has new findings: urgent, fix, defer, or no fix. Flag security risks with their impact and urgency. Fix only in-scope items; seek approval for out-of-scope recommendations.
 5. Leave one blank line above and below comments; use marker comments only.
 
-If Docker is selected, `AGENT.md` says not to run Docker operations or tests and to ask the user to run them. The generator creates empty `Dockerfile`, `docker-compose.yml`, and `.dockerignore` files in the project root. The interactive prompt asks this question; `--yes` assumes the project does not use Docker.
+If Docker is selected, `CONTEXT.md` says not to run Docker operations or tests and to ask the user to run them. The generator creates empty `Dockerfile`, `docker-compose.yml`, and `.dockerignore` files in the project root. The interactive prompt asks this question; `--yes` assumes the project does not use Docker.
 
 `PROGRESS.md` and `RECAP.md` are empty files ready to use. The generator preserves an existing `docs/` directory and its contents, adding any missing `screenshots/`, `guide/`, and `logs/` folders with `.gitkeep` placeholders. `docs/logs/` is ignored by Git by default for private progress archives.
 
-The root `.gitignore` automatically receives `AGENT.md`, `PROGRESS.md`, `RECAP.md`, and `docs/logs/`. If it already exists, missing entries are appended at the bottom without rewriting the existing contents; duplicates are skipped.
+The root `.gitignore` automatically receives `CONTEXT.md`, `PROGRESS.md`, `RECAP.md`, and `docs/logs/`. If it already exists, missing entries are appended at the bottom without rewriting the existing contents; duplicates are skipped.
 
 ## Development
 

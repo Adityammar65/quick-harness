@@ -49,10 +49,12 @@ def collect_harness_config(target: Path) -> HarnessConfig:
     description = ask_text(
         "Project description", validate=_required("A project description")
     )
+    tech_stack = ask_text("Tech stack", validate=_required("A tech stack"))
     uses_docker = ask_confirm("Does this project use Docker?", default=False)
     config = HarnessConfig(
         app_name=title.strip(),
         description=description.strip(),
+        tech_stack=tech_stack.strip(),
         uses_docker=uses_docker,
     )
     config.validate()

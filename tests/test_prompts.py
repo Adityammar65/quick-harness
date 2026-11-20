@@ -18,7 +18,7 @@ def test_collect_config_asks_title_description_then_docker(monkeypatch, tmp_path
 
     def answer(message, default="", validate=None):
         questions.append(message)
-        return "Sample Project" if message == "Project title" else "A local app."
+        return {"Project title": "Sample Project", "Project description": "A local app."}.get(message, "Python")
 
     monkeypatch.setattr(prompts, "ask_text", answer)
     docker_questions = []
@@ -30,7 +30,8 @@ def test_collect_config_asks_title_description_then_docker(monkeypatch, tmp_path
     config = prompts.collect_harness_config(tmp_path / "project")
     assert config.app_name == "Sample Project"
     assert config.description == "A local app."
-    assert questions == ["Project title", "Project description"]
+    assert questions == ["Project title", "Project description", "Tech stack"]
+    assert config.tech_stack == "Python"
     assert docker_questions == [("Does this project use Docker?", False)]
     assert config.uses_docker
 
@@ -40,7 +41,7 @@ def test_title_defaults_to_target_directory_name(monkeypatch, tmp_path):
 
     def answer(message, default="", validate=None):
         received.append((message, default))
-        return default or "A description"
+        return default or ("A description" if message == "Project description" else "Python")
 
     monkeypatch.setattr(prompts, "ask_text", answer)
     monkeypatch.setattr(prompts, "ask_confirm", lambda *args, **kwargs: False)
